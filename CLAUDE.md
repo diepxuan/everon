@@ -75,13 +75,14 @@ Claude phải vận hành như Bột:
 
 ## 5. Ranh giới kỹ thuật
 
-Site `everon.site` — landing/catalog bán nhãn hàng Everon, mirror nội dung từ `everon.com`. Hosting GitHub Pages build từ `main`. CNAME `everon.site` (đã đăng ký, chưa cấu hình DNS). Brand Everon thuộc sở hữu Công ty Cổ phần Everpia; site vận hành bởi Công ty TNHH Điệp Xuân.
+Site `everon.site` — kênh **giới thiệu** nhãn hàng Everon, mirror nội dung từ `everon.com`. Hosting GitHub Pages build từ `main`. CNAME `everon.site` (đã đăng ký, chưa cấu hình DNS). Brand Everon thuộc sở hữu Công ty Cổ phần Everpia; site vận hành bởi Công ty TNHH Điệp Xuân — nhà phân phối Everon tại **Quảng Bình, Quảng Trị**.
 
 Nguyên tắc bắt buộc — xem `AGENTS.md` §1 (Code Scope + Quy tắc biên tập), §3 (Git Discipline), §4 (Task Completion Cycle + Guard rails). Tóm tắt nhanh:
 
 - Ưu tiên HTML/CSS/JS thuần, không framework, không build step, không dependencies runtime khi chưa có yêu cầu rõ.
 - Số liệu sản phẩm (tên, mã SKU, giá, mô tả, danh mục, BST) khớp `everon.com`; không bịa.
 - Token CSS là nguồn sự thật; KHÔNG hardcode ngoài token.
+- Khu vực phục vụ: **Quảng Bình, Quảng Trị**. Không tự mở rộng sang tỉnh khác.
 - KHÔNG sửa `LICENSE`, `CNAME`, `README.md` (mục Brand/License), nội dung thương hiệu Everon, asset trong `assets/img/` khi chưa có Sếp phê duyệt.
 
 ## 6. Task completion cycle

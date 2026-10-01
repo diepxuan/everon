@@ -1,12 +1,23 @@
 # everon.site
 
-Site bán nhãn hàng **Everon** — chăn ga, gối, đệm, phụ kiện.
+Site **giới thiệu** nhãn hàng **Everon** — chăn ga, gối, đệm, phụ kiện — tại thị trường Quảng Bình, Quảng Trị.
 
 ## Mục tiêu
 
-`everon.site` là tên miền vận hành bởi **Công ty TNHH Điệp Xuân**, dùng để bán nhãn hàng Everon. Nhãn hiệu **Everon** thuộc sở hữu của **Công ty Cổ phần Everpia** (theo công bố trên [everon.com](https://everon.com)).
+`everon.site` là kênh giới thiệu nhãn hàng Everon do **Công ty TNHH Điệp Xuân** — nhà phân phối Everon tại **Quảng Bình và Quảng Trị** — vận hành. Site mirror nội dung sản phẩm từ [everon.com](https://everon.com) (thuộc sở hữu **Công ty Cổ phần Everpia**), giúp khách hàng trong khu vực tham khảo catalog đầy đủ.
 
-Site là alias nội dung của [everon.com](https://everon.com): mirror toàn bộ thông tin sản phẩm (tên, mã SKU, giá, mô tả, danh mục, bộ sưu tập) và hiển thị nguyên bản. Mọi thay đổi về sản phẩm, giá, chính sách phải đối chiếu với `everon.com` làm nguồn sự thật.
+Phạm vi hiện tại là **giới thiệu**, không phải bán hàng trực tiếp. Kênh mua hàng sẽ chuyển về `everon.com` hoặc qua Điệp Xuân (sẽ xác nhận CTA với Sếp ở task sau).
+
+Site là alias nội dung của [everon.com](https://everon.com): mirror thông tin sản phẩm (tên, mã SKU, giá, mô tả, danh mục, bộ sưu tập) và hiển thị nguyên bản. Mọi thay đổi về sản phẩm, giá, chính sách phải đối chiếu với `everon.com` làm nguồn sự thật.
+
+## Quan hệ thương hiệu
+
+| Bên | Vai trò |
+|---|---|
+| **Công ty Cổ phần Everpia** | Chủ sở hữu nhãn hiệu **Everon** (theo công bố trên `everon.com`) |
+| **Công ty TNHH Điệp Xuân** | Nhà phân phối nhãn hiệu Everon tại Quảng Bình, Quảng Trị — đơn vị vận hành `everon.site` |
+| **everon.com** | Site chính thức của nhãn hàng Everon (thuộc Everpia) |
+| **everon.site** | Site giới thiệu của nhà phân phối Điệp Xuân |
 
 ## Trạng thái
 
@@ -60,4 +71,4 @@ Chi tiết xem `AGENTS.md` §3.
 
 Source code phát hành theo MIT License — xem `LICENSE`.
 
-Nội dung thương hiệu Everon (tên sản phẩm, hình ảnh, bộ sưu tập, giá) thuộc quyền sở hữu của **Công ty Cổ phần Everpia** và hiển thị theo thỏa thuận với **Công ty TNHH Điệp Xuân** — đơn vị vận hành site.
+Nội dung thương hiệu Everon (tên sản phẩm, hình ảnh, bộ sưu tập, giá) thuộc quyền sở hữu của **Công ty Cổ phần Everpia** và hiển thị trên `everon.site` theo thỏa thuận phân phối với **Công ty TNHH Điệp Xuân** — nhà phân phối tại Quảng Bình, Quảng Trị.

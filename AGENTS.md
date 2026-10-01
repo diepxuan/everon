@@ -27,7 +27,8 @@ KHÔNG chỉ đọc AGENTS.md rồi thao tác luôn. Nếu có xung đột, ưu 
 
 - Tiếng Việt là ngôn ngữ hiển thị mặc định cho mọi copy người dùng nhìn thấy; thuộc tính `lang="vi"` phải đặt đúng trong `<html>` của mọi file HTML.
 - Số liệu sản phẩm (tên, mã SKU, giá, mô tả, danh mục, BST, hình ảnh) phải khớp `everon.com`; trước khi đổi, fetch lại trang nguồn và xác nhận với Sếp khi có sai lệch.
-- Thông tin pháp nhân (Công ty TNHH Điệp Xuân, Công ty Cổ phần Everpia) chỉ Sếp xác nhận khi đổi. Em không tự sửa, không suy luận quan hệ.
+- Thông tin pháp nhân (Công ty TNHH Điệp Xuân, Công ty Cổ phần Everpia) chỉ Sếp xác nhận khi đổi. Em không tự sửa, không suy luận quan hệ ngoài phạm vi Sếp đã xác nhận (hiện tại: Điệp Xuân là nhà phân phối tại Quảng Bình, Quảng Trị).
+- Khu vực phục vụ ghi rõ **Quảng Bình, Quảng Trị** khi site đề cập phạm vi khách hàng. Không tự mở rộng sang tỉnh khác khi chưa được Sếp duyệt.
 - Không thêm framework, build step, hay dependencies runtime khi chưa có yêu cầu rõ.
 - Token CSS là nguồn sự thật — KHÔNG hardcode giá trị ngoài token ở view mới.
 
@@ -48,8 +49,8 @@ KHÔNG chỉ đọc AGENTS.md rồi thao tác luôn. Nếu có xung đột, ưu 
 
 ### Đối tượng
 
-- Người tiêu dùng Việt Nam mua chăn ga gối đệm và phụ kiện phòng ngủ.
-- Kênh B2B: khách sạn, dự án nội thất (qua menu `Khách sạn/Dự án`).
+- Khách hàng cá nhân tại **Quảng Bình và Quảng Trị** quan tâm chăn ga, gối, đệm và phụ kiện phòng ngủ.
+- Kênh B2B: khách sạn, dự án nội thất trong khu vực Quảng Bình — Quảng Trị (qua menu `Khách sạn/Dự án`).
 
 ### Section người dùng nhìn thấy trên `everon.com` (tham chiếu để mirror)
 
@@ -65,9 +66,9 @@ KHÔNG chỉ đọc AGENTS.md rồi thao tác luôn. Nếu có xung đột, ưu 
 
 ### Pháp nhân
 
-- **Công ty TNHH Điệp Xuân** — đơn vị vận hành `everon.site`.
+- **Công ty TNHH Điệp Xuân** — **nhà phân phối** nhãn hiệu Everon tại **Quảng Bình, Quảng Trị**, đơn vị vận hành `everon.site`.
 - **Công ty Cổ phần Everpia** — chủ sở hữu nhãn hiệu Everon (theo công bố trên `everon.com`, bài viết CSR 30/01/2026).
-- Quan hệ hai bên: **Sếp chưa cung cấp chi tiết**, không suy luận. Khi site cần đề cập, dùng câu trung tính: "Điệp Xuân vận hành site, Everpia sở hữu nhãn hiệu".
+- Quan hệ hai bên: Điệp Xuân là nhà phân phối của Everpia tại Quảng Bình, Quảng Trị. Site `everon.site` hiển thị nội dung thương hiệu Everon theo thỏa thuận phân phối. Không suy luận thêm quan hệ ngoài phạm vi này.
 
 ### File tài liệu quan trọng trong workspace
 
