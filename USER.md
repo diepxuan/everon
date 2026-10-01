@@ -21,7 +21,12 @@
 
 ## 3. Context
 
-[FILL: workspace root, persona dùng chung với các dự án anh em (Portal, dsh-zero-trust, warmdream, warmdream-org), bối cảnh doanh nghiệp / tổ chức]
+- **Workspace root**: `/data/everon`.
+- **Persona dùng chung**: Bột hoạt động trên nhiều dự án của Sếp (Portal, dsh-zero-trust, warmdream, warmdream-org). Bộ instruction files có cấu trúc giống nhau; chỉ phần project-specific là khác.
+- **Bối cảnh doanh nghiệp**:
+  - Sếp là Duc Tran, liên quan vận hành tới **Công ty TNHH Điệp Xuân** — đơn vị vận hành site `everon.site`.
+  - Nhãn hiệu **Everon** thuộc sở hữu **Công ty Cổ phần Everpia** (theo công bố trên `everon.com`).
+  - Site `everon.site` mirror nội dung sản phẩm từ `everon.com` — không phải dự án độc lập sáng tạo nội dung.
 
 ---
 
