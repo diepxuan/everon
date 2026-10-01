@@ -46,7 +46,11 @@ Cập nhật lần cuối: 2026-10-01 — refine quan hệ pháp nhân + khu v�
   - `everon.site` là của Điệp Xuân, **giới thiệu** nhãn hàng Everon (tinh chỉnh từ "bán" → "giới thiệu").
   - Điệp Xuân là **nhà phân phối** của Everon tại **Quảng Bình, Quảng Trị**.
   - `everon.com` thuộc nhãn hàng Everon (= Everpia).
-- Cập nhật: `MEMORY.md`, `README.md`, `USER.md`, `AGENTS.md`, `CLAUDE.md`. Branch: `codex/fill-project-meta`.
+- Cập nhật: `MEMORY.md`, `README.md`, `USER.md`, `AGENTS.md`, `CLAUDE.md`, `IDENTITY.md`. Branch: `codex/fill-project-meta`.
+- Sếp chốt thêm:
+  - **CTA mua hàng**: Liên hệ Điệp Xuân qua **Zalo/SĐT** (site chỉ giới thiệu, không chuyển sang `everon.com` hay form riêng).
+  - **Đề cập pháp lý**: Ghi rõ "**nhà phân phối**" trên site. Cụm này khớp với cách đã ghi trong các instruction files; không xung đột.
+  - **Branch handling**: Push `codex/fill-project-meta` + mở PR #2 ngay, đợi Sếp review/merge.
 
 ### Lấp project meta cho `everon.site` (2026-10-01)
 
@@ -95,6 +99,6 @@ Cập nhật lần cuối: 2026-10-01 — refine quan hệ pháp nhân + khu v�
 - [ ] **Tạo `CHANGELOG.md`** — file chưa tồn tại, cần format release cho dự án.
 - [ ] **Tạo `memory/<ngày>.md`** — chưa có daily log nào.
 - [ ] **Code Scope (HTML/CSS/JS chính, asset thương hiệu)** — phụ thuộc stack, sẽ lấp sau khi chốt kiến trúc.
-- [ ] **CTA / kênh mua hàng** — site chỉ giới thiệu; cần xác nhận CTA (nút "Mua hàng" đi đâu: everon.com, Zalo/SĐT Điệp Xuân, form liên hệ).
-- [ ] **Thông tin liên hệ Điệp Xuân** — địa chỉ văn phòng / cửa hàng tại Quảng Bình, Quảng Trị, SĐT, email. Hiển thị ở đâu trên site (footer, trang Liên hệ).
-- [ ] **Hợp đồng phân phối** — Sếp có cần đề cập "Điệp Xuân là nhà phân phối chính thức tại Quảng Bình — Quảng Trị" trên site không (yêu cầu xác nhận quyền dùng nhãn hiệu từ Everpia).
+- [ ] **Thông tin liên hệ Điệp Xuân** — cần Sếp cung cấp SĐT/Zalo/email/địa chỉ văn phòng tại Quảng Bình, Quảng Trị để build CTA. CTA đã chốt: Zalo/SĐT (không dùng form, không chuyển everon.com).
+- [ ] **Vị trí đề cập "nhà phân phối" trên site** — footer, trang Giới thiệu, hay trang Liên hệ. Chốt khi build layout.
+- [ ] **Xác nhận Everpia cho dùng nhãn hiệu trên site** — Sếp tự xử lý, em không tự đề cập khi chưa có văn bản.
