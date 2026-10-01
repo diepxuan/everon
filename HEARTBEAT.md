@@ -4,4 +4,6 @@
 
 # Add tasks below when you want the agent to check something periodically.
 
-[FILL: nếu cần tác vụ định kỳ — ví dụ: kiểm tra expiry chứng chỉ, kiểm tra link die, đồng bộ upstream; nếu không cần thì để trống.]
+# Hiện không có tác vụ định kỳ nào cho dự án everon.site.
+# Khi Sếp yêu cầu check định kỳ (expiry chứng chỉ, link die, đồng bộ upstream,
+# đối chiếu sản phẩm everon.com, ...), thêm task vào đây.

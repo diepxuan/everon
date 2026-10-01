@@ -12,12 +12,13 @@ File này ghi chú các chi tiết riêng của môi trường dự án này. Sk
 
 | Thành phần | Giá trị | Ghi chú |
 |------------|---------|---------|
-| Loại site | [FILL] | |
-| Hosting | [FILL: GitHub Pages / Vercel / Netlify / ...] | |
-| CNAME | [FILL] | |
-| Repo | [FILL: git remote URL] | |
-| Pages URL mặc định | [FILL] | dùng khi cần xác minh hosting đang phục vụ |
-| Local preview | [FILL: lệnh khởi động server local + URL] | |
+| Loại site | Landing/catalog bán nhãn hàng Everon — mirror nội dung từ `everon.com` | |
+| Hosting | GitHub Pages | build từ `main` (root) |
+| CNAME | `everon.site` | đã đăng ký, DNS/CNAME chưa cấu hình |
+| Repo | `https://github.com/diepxuan/everon.git` | |
+| Pages URL mặc định | `https://diepxuan.github.io/everon` | dùng khi CNAME chưa active |
+| Pages URL khi CNAME active | `https://everon.site` | mục tiêu cuối |
+| Local preview | `python3 -m http.server 8000` → `http://localhost:8000` | chạy từ root workspace |
 
 ## Phân nhóm lệnh theo quyền
 
@@ -61,4 +62,11 @@ File này ghi chú các chi tiết riêng của môi trường dự án này. Sk
 
 ## Lưu ý verify sau khi sửa
 
-[FILL: checklist verify riêng — preview local, asset path, link, responsive, in A4 nếu có dossier, v.v.]
+- **Preview local**: chạy `python3 -m http.server 8000` ở root, mở `http://localhost:8000` kiểm tra render.
+- **Asset path**: logo, ảnh sản phẩm, banner phải trỏ đúng `assets/...` hoặc URL `everon.com` (khi chốt cơ chế mirror). Không để link 404.
+- **Link nav**: mọi anchor internal, link sang `everon.com` phải mở được. Link ra ngoài mở tab mới (`target="_blank" rel="noopener"`).
+- **Responsive**: check ở 3 breakpoint tối thiểu — mobile 375px, tablet 768px, desktop 1280px.
+- **Ngôn ngữ**: `lang="vi"` trên `<html>`, toàn bộ copy người dùng nhìn thấy bằng tiếng Việt.
+- **Số liệu sản phẩm**: trước khi release, đối chiếu tên/giá/SKU/danh mục với `everon.com`. Sai lệch phải báo Sếp.
+- **Token CSS**: dùng biến `--token-*` đã khai báo, không hardcode giá trị ngoài token.
+- **Không có dossier in A4** trong dự án này, bỏ qua bước in.
