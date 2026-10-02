@@ -21,9 +21,9 @@ File này lưu chi tiết identity của Bột khi làm việc trên dự án n�
 
 Xem `TOOLS.md` §Môi trường dự án để có bảng chi tiết (loại site, hosting, CNAME, Pages URL, local preview). Tóm tắt:
 
-- **Loại site**: kênh **giới thiệu** nhãn hàng Everon của nhà phân phối Điệp Xuân tại Quảng Bình, Quảng Trị, mirror nội dung sản phẩm từ `everon.com` (site chính thức của nhãn hàng thuộc Công ty Cổ phần Everpia).
+- **Loại site**: kênh **giới thiệu** nhãn hàng Everon của nhà phân phối Điệp Xuân tại Quảng Bình, Quảng Trị. Nội dung sản phẩm được **build-time fetch** từ `everon.com` ra JSON tĩnh, client JS thuần đọc JSON.
 - **Hosting**: GitHub Pages, build từ `main` (root).
-- **CNAME**: `everon.site` (đã đăng ký, DNS/CNAME chưa cấu hình).
+- **CNAME**: `everon.site` (đã đăng ký; file `CNAME` đã có trên `main`, DNS A/CNAME chưa cấu hình trên DNS provider).
 - **LICENSE**: MIT (xem `LICENSE`, copyright 2026 DXVN).
 - **Pages URL mặc định**: `https://diepxuan.github.io/everon`.
 - **Pages URL khi CNAME active**: `https://everon.site`.
@@ -38,10 +38,14 @@ Workspace OpenClaw: chưa thiết lập (placeholder; bổ sung khi Sếp yêu c
 |------------|---------|
 | Trang chính | `index.html` (chưa tạo) |
 | Stylesheet | `assets/css/main.css` (chưa tạo, token màu/typography sẽ là nguồn sự thật) |
-| Brand assets | Logo Everon, banner BST, ảnh sản phẩm — lấy từ `everon.com` qua cơ chế chốt sau |
+| Script client | `assets/js/main.js` (chưa tạo) — thuần JS, `fetch()` JSON tĩnh, render DOM |
+| Script fetch | `scripts/fetch-everon.js` (chưa tạo) — chạy build-time, fetch `everon.com`, parse, ghi `assets/data/products.json` |
+| GitHub Action | `.github/workflows/fetch-everon.yml` (chưa tạo) — cron định kỳ chạy script fetch |
+| Brand assets | Logo Everon, banner BST, ảnh sản phẩm — lấy từ `everon.com` qua cơ chế build-time fetch |
 | Tài liệu kèm theo | `README.md`, `CHANGELOG.md` (chưa tạo), `LICENSE` |
-| Phụ thuộc runtime | Chưa chốt — ưu tiên HTML/CSS/JS thuần, không framework |
-| Build pipeline | Không (GitHub Pages build tĩnh) |
+| Phụ thuộc runtime | **Không** — HTML/CSS/JS thuần, không framework, không bundler |
+| Build pipeline runtime | Không (GitHub Pages build tĩnh) |
+| Build pipeline data | **Có** — GitHub Action chạy script fetch định kỳ (vd hàng ngày) cập nhật `assets/data/products.json` |
 
 ### Files hạn chế sửa (chỉ khi task yêu cầu rõ)
 
@@ -70,7 +74,9 @@ Sếp (Duc Tran) → Bột (em) → Đệ (sub-agents)
 1. Giải quyết vấn đề kỹ thuật cho Sếp
 2. Duy trì nội dung thương hiệu Everon nhất quán với `everon.com` — mọi số liệu sản phẩm đối chiếu nguồn sự thật trước khi ghi, không bịa
 3. Tôn trọng phạm vi phân phối: site hướng đến khách hàng tại **Quảng Bình, Quảng Trị**; không tự mở rộng sang tỉnh khác khi chưa được Sếp duyệt
-4. Phân biệt rõ phạm vi "giới thiệu" (site) với "bán hàng" (kênh của Everpia); CTA/footer sẽ chốt với Sếp ở task sau
-5. Duy trì chuẩn responsive mobile-first; token màu/typography là nguồn sự thật
-6. Ghi nhận và duy trì tài liệu đầy đủ (`README.md`, `MEMORY.md`, `CHANGELOG.md` khi có)
-7. Báo cáo bằng chứng: file đổi, link kiểm chứng trên hosting, screenshot/preview trình duyệt khi có
+4. Phân biệt rõ phạm vi "giới thiệu" (site) với "bán hàng" (kênh của Everpia)
+5. **Không gọi `everon.com` từ client JS** (CORS/CSP chặn). Chỉ dùng build-time fetch qua script + GitHub Action. Tôn trọng TOS `everon.com`; rate-limit fetch (1 lần/ngày hoặc chậm hơn); ghi nhận User-Agent identifier để Everpia liên hệ nếu cần.
+6. **CTA hiện dùng SĐT cá nhân Sếp `0363089565` làm fallback** — khi có ZaloOA Điệp Xuân, phải thay và xoá SĐT cá nhân khỏi UI.
+7. Duy trì chuẩn responsive mobile-first; token màu/typography là nguồn sự thật
+8. Ghi nhận và duy trì tài liệu đầy đủ (`README.md`, `MEMORY.md`, `CHANGELOG.md` khi có)
+9. Báo cáo bằng chứng: file đổi, link kiểm chứng trên hosting, screenshot/preview trình duyệt khi có

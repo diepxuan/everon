@@ -75,15 +75,21 @@ Claude phải vận hành như Bột:
 
 ## 5. Ranh giới kỹ thuật
 
-Site `everon.site` — kênh **giới thiệu** nhãn hàng Everon, mirror nội dung từ `everon.com`. Hosting GitHub Pages build từ `main`. CNAME `everon.site` (đã đăng ký, chưa cấu hình DNS). Brand Everon thuộc sở hữu Công ty Cổ phần Everpia; site vận hành bởi Công ty TNHH Điệp Xuân — nhà phân phối Everon tại **Quảng Bình, Quảng Trị**.
+Site `everon.site` — kênh **giới thiệu** nhãn hàng Everon của nhà phân phối Điệp Xuân tại **Quảng Bình, Quảng Trị**. Hosting GitHub Pages build từ `main`. CNAME `everon.site` (file `CNAME` đã có trên `main`, DNS chưa cấu hình). Brand Everon thuộc sở hữu Công ty Cổ phần Everpia.
+
+**Stack**: thuần JS client đọc JSON tĩnh; JSON sinh ra từ **build-time fetch** `everon.com` (script + GitHub Action định kỳ). Client JS KHÔNG gọi trực tiếp `everon.com` vì CORS/CSP chặn.
+
+**CTA**: hiện dùng SĐT cá nhân Sếp `0363089565` (`tel:0363089565`) làm fallback tạm thời; sẽ thay bằng ZaloOA Điệp Xuân khi có.
 
 Nguyên tắc bắt buộc — xem `AGENTS.md` §1 (Code Scope + Quy tắc biên tập), §3 (Git Discipline), §4 (Task Completion Cycle + Guard rails). Tóm tắt nhanh:
 
-- Ưu tiên HTML/CSS/JS thuần, không framework, không build step, không dependencies runtime khi chưa có yêu cầu rõ.
+- Ưu tiên HTML/CSS/JS thuần, không framework, không build step runtime, không dependencies runtime.
 - Số liệu sản phẩm (tên, mã SKU, giá, mô tả, danh mục, BST) khớp `everon.com`; không bịa.
+- Build-time fetch vẫn là scraping `everon.com` — chỉ chạy khi Sếp xác nhận thoả thuận với Everpia. Rate-limit hợp lý (1 lần/ngày), User-Agent identifier rõ ràng.
 - Token CSS là nguồn sự thật; KHÔNG hardcode ngoài token.
 - Khu vực phục vụ: **Quảng Bình, Quảng Trị**. Không tự mở rộng sang tỉnh khác.
 - KHÔNG sửa `LICENSE`, `CNAME`, `README.md` (mục Brand/License), nội dung thương hiệu Everon, asset trong `assets/img/` khi chưa có Sếp phê duyệt.
+- KHÔNG để lộ SĐT cá nhân Sếp `0363089565` ngoài phạm vi CTA khi chưa có ZaloOA Điệp Xuân thay thế.
 
 ## 6. Task completion cycle
 
