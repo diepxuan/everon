@@ -18,9 +18,14 @@ KHÔNG chỉ đọc AGENTS.md rồi thao tác luôn. Nếu có xung đột, ưu 
 |---------|--------|---------|
 | Chính | `index.html` + các trang HTML trong root hoặc `pages/` | copy + cấu trúc section |
 | Chính | `assets/css/main.css` (token màu/typography, responsive) | khi có file thật |
+| Chính | `assets/js/main.js` | thuần JS, `fetch()` JSON tĩnh, render DOM |
+| Chính | `assets/data/products.json` | output từ build-time fetch; client JS đọc file này |
+| Build-time | `scripts/fetch-everon.js` | fetch `everon.com`, parse HTML, ghi `products.json` |
+| Build-time | `.github/workflows/fetch-everon.yml` | cron định kỳ chạy script fetch |
 | Hạn chế | Logo Everon, favicon, ảnh sản phẩm trong `assets/img/` | chỉ thay khi Sếp duyệt bộ asset mới từ `everon.com` |
 | Hạn chế | `LICENSE`, `CNAME`, `README.md` (mục Brand/License) | chỉ Sếp đổi |
 | Hạn chế | Thông tin pháp nhân trong `README.md` và `MEMORY.md` §0 | đối chiếu công bố trên `everon.com` và chỉ thị của Sếp |
+| Hạn chế | `assets/data/contact.json` (khi có) | chứa CTA fallback; chỉ Sếp đổi |
 | Tài liệu | `README.md`, `CHANGELOG.md`, `MEMORY.md` | cập nhật khi cấu trúc/cơ chế/thông tin pháp nhân đổi |
 
 ### Quy tắc biên tập nội dung
@@ -29,7 +34,8 @@ KHÔNG chỉ đọc AGENTS.md rồi thao tác luôn. Nếu có xung đột, ưu 
 - Số liệu sản phẩm (tên, mã SKU, giá, mô tả, danh mục, BST, hình ảnh) phải khớp `everon.com`; trước khi đổi, fetch lại trang nguồn và xác nhận với Sếp khi có sai lệch.
 - Thông tin pháp nhân (Công ty TNHH Điệp Xuân, Công ty Cổ phần Everpia) chỉ Sếp xác nhận khi đổi. Em không tự sửa, không suy luận quan hệ ngoài phạm vi Sếp đã xác nhận (hiện tại: Điệp Xuân là nhà phân phối tại Quảng Bình, Quảng Trị).
 - Khu vực phục vụ ghi rõ **Quảng Bình, Quảng Trị** khi site đề cập phạm vi khách hàng. Không tự mở rộng sang tỉnh khác khi chưa được Sếp duyệt.
-- Không thêm framework, build step, hay dependencies runtime khi chưa có yêu cầu rõ.
+- Không thêm framework, build step runtime, hay dependencies runtime khi chưa có yêu cầu rõ. Build-time script fetch có thể dùng dependency Node/Python, nhưng output là JSON tĩnh — runtime site không phụ thuộc.
+- **Client JS KHÔNG gọi trực tiếp `everon.com`**: CORS chặn (không có `Access-Control-Allow-Origin`), CSP `frame-ancestors 'self'` chặn iframe, không có public JSON API. Chỉ dùng build-time fetch qua script + GitHub Action.
 - Token CSS là nguồn sự thật — KHÔNG hardcode giá trị ngoài token ở view mới.
 
 ---
