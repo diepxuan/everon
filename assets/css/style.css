@@ -24,6 +24,9 @@ body {
   line-height: 1.55;
 }
 img { max-width: 100%; }
+/* Ảnh lỗi cả bản tự lưu lẫn bản nguồn: JS ẩn đi (kèm style inline),
+   class này là lớp dự phòng để không bao giờ hiện icon ảnh vỡ. */
+img.img-broken { display: none; }
 a { color: var(--brand); }
 .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 .muted { color: var(--muted); }
