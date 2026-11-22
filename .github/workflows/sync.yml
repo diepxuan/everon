@@ -1,0 +1,50 @@
+# .github/workflows/sync.yml — KHUNG workflow dong bo catalog (chua chay tren GitHub)
+# Theo phuong an everon.site muc 5 + phu luc B. Ghi chu:
+#  - Buoc chay that hien tai la scripts/sync/scrape-full.mjs (da kiem chung
+#    chay full 189 san pham ngay 22/11/2026). Tach thanh discover/fetch/
+#    extract/images rieng la buoc tai cau truc tiep theo, truoc khi bat
+#    workflow nay len lich tu dong.
+#  - Buoc tai + nen anh WebP (images.mjs) CHUA co trong ban nay: file JSON
+#    hien chi luu source_url. Them buoc do truoc khi mo PR dau tien co anh.
+#  - Che do xuat ban da chot: mo PR de duyet thu cong thoi gian dau
+#    (peter-evans/create-pull-request), KHONG tu merge.
+name: Sync catalog from everon.com
+
+on:
+  schedule:
+    - cron: "0 20 * * *" # 03:00 gio Viet Nam, hang ngay
+  workflow_dispatch: # chay thu cong khi ra bo suu tap moi / khuyen mai lon
+  # full-audit chay quet toan bo cuoi tuan nam o workflow rieng (xem phuong an).
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180 # chay full lan dau ~100 phut (1,5s/request, tuan tu);
+      # cac lan sau chi fetch URL thay doi theo lastmod nen chi mat vai phut.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Sync catalog (Bo chan ga)
+        run: node scripts/sync/scrape-full.mjs --resume --skip-discovery
+      - name: Validate JSON
+        run: node scripts/sync/validate.mjs data/products-bo-chan-ga.full.json
+      - name: Diff vs truoc do
+        run: node scripts/sync/diff.mjs data/products-bo-chan-ga.prev.json data/products-bo-chan-ga.full.json || true
+      # TODO: buoc tai + nen anh WebP (scripts/sync/images.mjs) — them truoc PR anh dau tien.
+      - name: Mo PR de duyet thu cong
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "Cap nhat catalog tu everon.com"
+          branch: "sync/catalog"
+          commit-message: "sync: cap nhat catalog Bo chan ga tu everon.com"
+          body: |
+            Dong bo tu dong tu everon.com (sitemap + product-variation).
+            Xem data/sync-report.md kem theo de doi chieu so luong, gia doi va
+            san pham het hang truoc khi merge. Duyet thu cong theo quyet dinh
+            da chot ngay 22/11/2026.
