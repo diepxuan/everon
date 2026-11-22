@@ -1,18 +1,39 @@
 // validate.mjs — Kiem tra file JSON catalog theo schema muc 4 phuong an.
 // Node.js 18+, khong dependency.
 //   node scripts/sync/validate.mjs [duong-dan-file-json]
+//     [--manifest data/image-manifest.json] [--prev data/products.json.cu]
 // Mac dinh: data/products-bo-chan-ga.full.json (ban co wrapper) hoac
 // data/products.json (ban mang tran trong pr-ready).
+// --manifest: doi chieu tung media.source_url voi manifest anh
+//   (local_path phai trung voi media.src; anh trong manifest phai co file).
+// --prev: safety gate — chặn nếu catalog mất >10% so với bản trước
+//   hoặc có giá = 0 (gia <= 0 da la loi rieng tung san pham).
 // Loi (fail) -> exit 1. Canh bao (warning: thieu chat lieu/mau) chi liet ke,
 // khong fail — vi nguon that su khong co truong do.
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
-const file = process.argv[2] ?? 'data/products-bo-chan-ga.full.json';
+const argv = process.argv.slice(2);
+const file = argv.find((a) => !a.startsWith('--')) ?? 'data/products-bo-chan-ga.full.json';
+const opt = (name) => {
+  const eq = argv.find((a) => a.startsWith(`${name}=`))?.split('=')[1];
+  if (eq !== undefined) return eq;
+  const i = argv.indexOf(name);
+  return i >= 0 ? argv[i + 1] : undefined;
+};
+const manifestFile = opt('--manifest');
+const prevFile = opt('--prev');
 const raw = JSON.parse(readFileSync(file, 'utf8'));
 const products = Array.isArray(raw) ? raw : raw.products ?? [];
 const errors = [];
 const warnings = [];
 const seenSku = new Set();
+
+// Anh tu luu: media.src la duong dan anh WebP trong repo
+// (vd: assets/img/products/cpm27202/cover.webp). Thu muc phai trung
+// voi id san pham (sku viet thuong), ten file cover.webp hoac
+// img-<so>.webp; neu chuyen WebP that bai, images.mjs giu dinh dang
+// goc (.jpg/.png) va cap nhat lai src — ca hai deu hop le.
+const SRC_RE = /^assets\/img\/products\/[a-z0-9-]+\/(cover|img-\d+)\.(webp|jpg|jpeg|png)$/;
 
 if (!Array.isArray(raw) && raw.schema_version !== 1) errors.push('schema_version phai la 1');
 if (!Array.isArray(products) || products.length === 0) errors.push('khong co san pham nao');
@@ -41,6 +62,12 @@ for (const p of products) {
   if (!Array.isArray(p.media) || p.media.length === 0) errors.push(`${tag}: khong co anh`);
   else for (const m of p.media) {
     if (!m.source_url?.startsWith('https://everon.com/')) errors.push(`${tag}: anh source_url khong phai everon.com`);
+    if (!m.src || typeof m.src !== 'string') errors.push(`${tag}: anh thieu src (duong dan anh tu luu)`);
+    else {
+      if (!SRC_RE.test(m.src)) errors.push(`${tag}: anh src sai dinh dang: ${m.src}`);
+      const dir = m.src.split('/')[3];
+      if (dir && p.id && dir !== p.id) errors.push(`${tag}: anh src thu muc ${dir} khac id san pham ${p.id}`);
+    }
   }
   if (!p.source?.url?.startsWith('https://everon.com/san-pham/')) errors.push(`${tag}: source.url khong phai trang san pham everon.com`);
   if (!p.attributes?.material) warnings.push(`${tag}: thieu chat lieu (nguon khong co)`);
@@ -54,5 +81,59 @@ const summary = {
   errors: errors.length, warnings: warnings.length,
   error_list: errors, warning_list: warnings,
 };
+
+// --- Safety gate (--prev): chan neu catalog mat >10% hoac gia = 0 ---
+let gate = null;
+if (prevFile) {
+  try {
+    const prevRaw = JSON.parse(readFileSync(prevFile, 'utf8'));
+    const prevProducts = Array.isArray(prevRaw) ? prevRaw : prevRaw.products ?? [];
+    const prevCount = prevProducts.length;
+    const loss = prevCount ? ((prevCount - products.length) / prevCount) * 100 : 0;
+    const zeroPrice = products.filter((p) => p.price?.amount === 0).length;
+    gate = { prev_count: prevCount, new_count: products.length, loss_percent: Number(loss.toFixed(1)), zero_price_products: zeroPrice };
+    if (prevCount > 0 && products.length < prevCount * 0.9) {
+      errors.push(`safety-gate: catalog mat ${loss.toFixed(1)}% (${prevCount} -> ${products.length}), vuot nguong 10%`);
+    }
+    if (zeroPrice > 0) errors.push(`safety-gate: ${zeroPrice} san pham co gia = 0`);
+    summary.gate = gate;
+  } catch (e) {
+    warnings.push(`safety-gate: khong doc duoc file truoc (${prevFile}): ${e.message}`);
+  }
+}
+
+// --- Doi chieu manifest anh (--manifest) ---
+let manifestCheck = null;
+if (manifestFile) {
+  try {
+    if (!existsSync(manifestFile)) {
+      warnings.push(`manifest: khong co file ${manifestFile} — anh chua duoc tai ve repo`);
+    } else {
+      const manifest = JSON.parse(readFileSync(manifestFile, 'utf8'));
+      const entries = manifest.images ?? {};
+      let missing = 0, mismatch = 0, missingFile = 0;
+      const allSources = new Set();
+      for (const p of products) {
+        for (const m of p.media ?? []) {
+          allSources.add(m.source_url);
+          const e = entries[m.source_url];
+          if (!e) { missing++; continue; }
+          if (e.local_path !== m.src) { mismatch++; errors.push(`${p.sku}: manifest local_path ${e.local_path} khac media.src ${m.src}`); }
+          if (!existsSync(e.local_path)) { missingFile++; errors.push(`${p.sku}: file anh tu luu khong ton tai: ${e.local_path}`); }
+        }
+      }
+      let orphans = 0;
+      for (const url of Object.keys(entries)) if (!allSources.has(url)) orphans++;
+      if (orphans > 0) warnings.push(`manifest: ${orphans} anh thua khong con trong catalog (can chay images.mjs de don dep)`);
+      manifestCheck = { entries: Object.keys(entries).length, missing, mismatch, missing_file: missingFile, orphans };
+      if (missing > 0) warnings.push(`manifest: ${missing} anh chua co trong manifest (chua chay images.mjs hoac tai loi)`);
+    }
+    summary.manifest = manifestCheck;
+  } catch (e) {
+    errors.push(`manifest: loi doc ${manifestFile}: ${e.message}`);
+  }
+}
+
+summary.errors = errors.length;
 console.log(JSON.stringify(summary, null, 2));
 process.exit(errors.length ? 1 : 0);

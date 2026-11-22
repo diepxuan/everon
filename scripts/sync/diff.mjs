@@ -2,6 +2,10 @@
 // Node.js 18+, khong dependency.
 //   node scripts/sync/diff.mjs <file-cu> <file-moi>
 // Moi file co the la ban wrapper {products:[...]} hoac mang tran [...].
+// Luu y: duong dan anh tu luu (media.src) KHONG duoc coi la thay doi
+// noi dung — chi so sanh gia, trang thai, so bien the va tap hop
+// source_url (anh goc doi moi la thay doi anh that su). Them/xoa anh
+// duoc liet ke rieng o media_changes de mo ta PR.
 import { readFileSync } from 'node:fs';
 
 const [oldFile, newFile] = process.argv.slice(2);
@@ -19,6 +23,7 @@ const removed = oldP.filter((p) => !newBy[p.sku]).map((p) => p.sku);
 const priceChanges = [];
 const statusChanges = [];
 const variantChanges = [];
+const mediaChanges = [];
 for (const p of newP) {
   const o = oldBy[p.sku];
   if (!o) continue;
@@ -29,6 +34,15 @@ for (const p of newP) {
   if ((o.variants?.length ?? 0) !== (p.variants?.length ?? 0)) {
     variantChanges.push({ sku: p.sku, old_variants: o.variants?.length ?? 0, new_variants: p.variants?.length ?? 0 });
   }
+  // Chi so sanh tap source_url (anh goc); bo qua media.src vi do chi la
+  // duong dan anh tu luu trong repo, khong phai noi dung san pham.
+  const oldUrls = new Set((o.media ?? []).map((m) => m.source_url));
+  const newUrls = (p.media ?? []).map((m) => m.source_url);
+  const addedUrls = newUrls.filter((u) => !oldUrls.has(u));
+  const removedUrls = [...oldUrls].filter((u) => !newUrls.includes(u));
+  if (addedUrls.length || removedUrls.length) {
+    mediaChanges.push({ sku: p.sku, added_images: addedUrls, removed_images: removedUrls });
+  }
 }
 console.log(JSON.stringify({
   old_file: oldFile, new_file: newFile,
@@ -38,4 +52,5 @@ console.log(JSON.stringify({
   price_changes: priceChanges,
   status_changes: statusChanges,
   variant_changes: variantChanges,
+  media_changes: mediaChanges,
 }, null, 2));

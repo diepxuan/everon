@@ -1,50 +1,146 @@
-# .github/workflows/sync.yml — KHUNG workflow dong bo catalog (chua chay tren GitHub)
-# Theo phuong an everon.site muc 5 + phu luc B. Ghi chu:
-#  - Buoc chay that hien tai la scripts/sync/scrape-full.mjs (da kiem chung
-#    chay full 189 san pham ngay 22/11/2026). Tach thanh discover/fetch/
-#    extract/images rieng la buoc tai cau truc tiep theo, truoc khi bat
-#    workflow nay len lich tu dong.
-#  - Buoc tai + nen anh WebP (images.mjs) CHUA co trong ban nay: file JSON
-#    hien chi luu source_url. Them buoc do truoc khi mo PR dau tien co anh.
-#  - Che do xuat ban da chot: mo PR de duyet thu cong thoi gian dau
-#    (peter-evans/create-pull-request), KHONG tu merge.
+# .github/workflows/sync.yml — Đồng bộ catalog + ảnh tự lưu cho everon.site
+# Theo phương án everon.site mục 5 + chiến lược ảnh.
+#
+# Luồng chạy (thứ tự quan trọng):
+#   1. scrape-full.mjs — cập nhật dữ liệu từ everon.com (sitemap + variation).
+#   2. export-site-data.mjs — xuất mảng trần data/products.json + sync-state.json.
+#   3. images.mjs — tải ảnh MỚI/THAY ĐỔI về assets/img/products/<sku>/*.webp,
+#      song song với cập nhật dữ liệu (chạy sau scrape vì cần danh sách
+#      source_url mới nhất). Ảnh không đổi (đã có trong manifest) thì bỏ qua.
+#   4. validate.mjs (+ safety gate) — chặn nếu mất >10% catalog hoặc giá = 0.
+#   5. diff.mjs — tóm tắt thay đổi để đưa vào mô tả PR.
+#   6. peter-evans/create-pull-request — mở PR để DUYỆT THỦ CÔNG, KHÔNG tự merge.
+#      Action chỉ mở PR khi có thay đổi thật (không có thay đổi thì không làm gì).
+#
+# Lịch: hằng ngày 03:00 giờ Việt Nam (20:00 UTC). Chủ nhật (giờ Việt Nam)
+# quét TOÀN BỘ (bỏ checkpoint); các ngày khác quét tăng dần theo lastmod.
+# Chạy tay: Actions > Sync catalog > Run workflow, tick full_scan nếu muốn quét toàn bộ.
+#
+# Lần chạy đầu tiên: tải toàn bộ ~400 ảnh (~10 MB WebP) và mở 1 PR lớn chứa
+# cả dữ liệu + ảnh. Các lần sau chỉ tải ảnh mới/thay đổi.
 name: Sync catalog from everon.com
 
 on:
   schedule:
-    - cron: "0 20 * * *" # 03:00 gio Viet Nam, hang ngay
-  workflow_dispatch: # chay thu cong khi ra bo suu tap moi / khuyen mai lon
-  # full-audit chay quet toan bo cuoi tuan nam o workflow rieng (xem phuong an).
+    - cron: "0 20 * * *" # 03:00 giờ Việt Nam, hằng ngày
+  workflow_dispatch:
+    inputs:
+      full_scan:
+        description: "Quét toàn bộ (bỏ qua checkpoint, chạy discovery lại từ đầu)"
+        type: boolean
+        default: false
 
 concurrency:
   group: catalog-sync
   cancel-in-progress: false
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 180 # chay full lan dau ~100 phut (1,5s/request, tuan tu);
-      # cac lan sau chi fetch URL thay doi theo lastmod nen chi mat vai phut.
+    timeout-minutes: 240 # chạy full lần đầu ~100 phút (tuần tự, 1,5s/request)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Sync catalog (Bo chan ga)
-        run: node scripts/sync/scrape-full.mjs --resume --skip-discovery
-      - name: Validate JSON
-        run: node scripts/sync/validate.mjs data/products-bo-chan-ga.full.json
-      - name: Diff vs truoc do
-        run: node scripts/sync/diff.mjs data/products-bo-chan-ga.prev.json data/products-bo-chan-ga.full.json || true
-      # TODO: buoc tai + nen anh WebP (scripts/sync/images.mjs) — them truoc PR anh dau tien.
-      - name: Mo PR de duyet thu cong
+
+      - name: Đảm bảo ffmpeg (chuyển ảnh sang WebP)
+        run: |
+          if ! command -v ffmpeg >/dev/null 2>&1 || ! ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libwebp; then
+            echo "ffmpeg chưa có sẵn — cài qua apt..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -hide_banner -encoders | grep libwebp
+
+      - name: Lưu bản dữ liệu hiện tại (để diff + safety gate)
+        run: |
+          if [ -f data/products.json ]; then
+            cp data/products.json /tmp/products-prev.json
+          else
+            echo "Chưa có data/products.json — lần chạy đầu tiên, không có bản trước để so."
+            echo "[]" > /tmp/products-prev.json
+          fi
+
+      - name: Xác định quét toàn bộ hay tăng dần
+        id: mode
+        run: |
+          # Chủ nhật tính theo giờ Việt Nam: 03:00 +07 Chủ nhật = 20:00 UTC Thứ bảy,
+          # nên phải lấy thứ theo múi giờ Asia/Ho_Chi_Minh, không dùng giờ UTC.
+          DOW_VN=$(TZ=Asia/Ho_Chi_Minh date +%u)
+          if [ "$DOW_VN" = "7" ] || [ "${{ inputs.full_scan }}" = "true" ]; then
+            echo "full=true" >> "$GITHUB_OUTPUT"
+            echo "Quét TOÀN BỘ (Chủ nhật / chạy tay yêu cầu full_scan)."
+          else
+            echo "full=false" >> "$GITHUB_OUTPUT"
+            echo "Quét tăng dần (chỉ URL thay đổi theo lastmod)."
+          fi
+
+      - name: Sync catalog (Bộ chăn ga)
+        run: |
+          if [ "${{ steps.mode.outputs.full }}" = "true" ]; then
+            node scripts/sync/scrape-full.mjs
+          elif [ -f data/discovery.json ]; then
+            node scripts/sync/scrape-full.mjs --resume --skip-discovery
+          else
+            echo "Chưa có data/discovery.json — chạy discovery đầy đủ lần đầu."
+            node scripts/sync/scrape-full.mjs
+          fi
+
+      - name: Xuất dữ liệu site + cập nhật sync-state
+        run: node scripts/sync/export-site-data.mjs
+
+      - name: Tải + chuyển ảnh sang WebP
+        run: node scripts/sync/images.mjs
+
+      - name: Validate + safety gate
+        run: node scripts/sync/validate.mjs data/products.json --manifest data/image-manifest.json --prev /tmp/products-prev.json
+
+      - name: Diff vs trước đó
+        run: node scripts/sync/diff.mjs /tmp/products-prev.json data/products.json > data/sync-diff.json
+
+      - name: Soạn mô tả PR
+        run: |
+          node -e "
+          const fs = require('fs');
+          const diff = JSON.parse(fs.readFileSync('data/sync-diff.json', 'utf8'));
+          const man = JSON.parse(fs.readFileSync('data/image-manifest.json', 'utf8'));
+          const s = man.summary || {};
+          const vnd = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
+          const list = (arr, fmt, max = 20) => arr.slice(0, max).map(fmt).join('\n') + (arr.length > max ? '\n- ... và ' + (arr.length - max) + ' mục nữa' : '');
+          const lines = [
+            'Đồng bộ tự động từ everon.com (sitemap + product-variation). Duyệt thủ công trước khi merge — KHÔNG tự merge.',
+            '',
+            '## Dữ liệu',
+            '- Sản phẩm: ' + diff.old_count + ' → ' + diff.new_count,
+            '- Mới thêm (' + diff.added_count + '): ' + (diff.added.join(', ') || 'không có'),
+            '- Bị gỡ (' + diff.removed_count + '): ' + (diff.removed.join(', ') || 'không có'),
+            '- Đổi giá (' + diff.price_changes.length + '):',
+            list(diff.price_changes, (c) => '  - ' + c.sku + ': ' + vnd(c.old_price) + ' → ' + vnd(c.new_price)),
+            '- Đổi trạng thái (' + diff.status_changes.length + '):',
+            list(diff.status_changes, (c) => '  - ' + c.sku + ': ' + c.old_status + ' → ' + c.new_status),
+            '- Đổi ảnh gốc (' + diff.media_changes.length + ' SP):',
+            list(diff.media_changes, (c) => '  - ' + c.sku + ': +' + c.added_images.length + ' ảnh, -' + c.removed_images.length + ' ảnh'),
+            '',
+            '## Ảnh tự lưu (assets/img/products/)',
+            '- Tổng: ' + s.total + ' ảnh; tải mới/chuyển WebP: ' + s.downloaded + '; bỏ qua (không đổi): ' + s.skipped + '; lỗi: ' + s.failed + '; giữ định dạng gốc: ' + (s.fallback_original || 0),
+            '- Dung lượng ảnh mới: ' + ((s.bytes_total || 0) / 1024).toFixed(0) + ' KB',
+            '',
+            '## Kiểm tra',
+            '- validate.mjs + safety gate (mất >10% catalog hoặc giá = 0 thì chặn): đã qua.',
+            '- Chi tiết diff đầy đủ xem data/sync-diff.json trong branch này.',
+          ];
+          fs.writeFileSync('/tmp/PR_BODY.md', lines.join('\n') + '\n');
+          console.log('Da soan mo ta PR (' + lines.length + ' dong).');
+          "
+
+      - name: Mở PR để duyệt thủ công
         uses: peter-evans/create-pull-request@v6
         with:
-          title: "Cap nhat catalog tu everon.com"
+          title: "Cập nhật catalog từ everon.com"
           branch: "sync/catalog"
-          commit-message: "sync: cap nhat catalog Bo chan ga tu everon.com"
-          body: |
-            Dong bo tu dong tu everon.com (sitemap + product-variation).
-            Xem data/sync-report.md kem theo de doi chieu so luong, gia doi va
-            san pham het hang truoc khi merge. Duyet thu cong theo quyet dinh
-            da chot ngay 22/11/2026.
+          commit-message: "sync: cập nhật catalog Bộ chăn ga từ everon.com"
+          body-path: /tmp/PR_BODY.md

@@ -111,9 +111,50 @@
   }
 
   /* ---------- dữ liệu sản phẩm ---------- */
-  function coverOf(p) {
+  function coverMedia(p) {
     var m = (p.media || []).find(function (x) { return x.role === "cover"; }) || (p.media || [])[0];
-    return m ? m.source_url : "";
+    return m || null;
+  }
+  /* Đường dẫn ảnh hiển thị: ưu tiên ảnh tự lưu trong repo (m.src),
+     chưa có thì dùng source_url. Không hardcode tên miền nguồn ở đây —
+     source_url lấy từ dữ liệu, nên giao diện không chứa link ra ngoài. */
+  function localSrc(m) { return m ? (m.src || m.source_url || "") : ""; }
+  function fallbackSrc(m) {
+    var s = localSrc(m);
+    return m && m.source_url && m.source_url !== s ? m.source_url : "";
+  }
+  /* Thẻ <img> kèm fallback: lỗi ảnh tự lưu -> đổi sang source_url 1 lần;
+     lỗi cả source_url -> ẩn ảnh (không vỡ giao diện). */
+  function imgHTML(m, alt, extra) {
+    var src = localSrc(m);
+    var fb = fallbackSrc(m);
+    return '<img src="' + esc(src) + '"' +
+      (fb ? ' data-fallback="' + esc(fb) + '"' : "") +
+      ' alt="' + esc(alt) + '"' + (extra || "") + ">";
+  }
+  function onImgError(e) {
+    var img = e && e.target ? e.target : null;
+    if (!img || !img.getAttribute) return;
+    var fb = img.getAttribute("data-fallback");
+    if (fb && !(img.dataset && img.dataset.fbTried)) {
+      if (img.dataset) img.dataset.fbTried = "1";
+      img.src = fb;
+      return;
+    }
+    // Cả ảnh tự lưu lẫn ảnh nguồn đều lỗi -> ẩn ảnh, giữ giao diện nguyên.
+    if (img.classList) img.classList.add("img-broken");
+    if (img.style) img.style.display = "none";
+  }
+  /* Gắn bắt lỗi ảnh (capture, vì sự kiện error không nổi bọt) cho mọi
+     <img data-fallback> trong một khối vừa render xong. Gọi ngay sau
+     mỗi lần gán innerHTML chứa ảnh — ảnh tải bất đồng bộ nên listener
+     gắn kịp trước khi lỗi xảy ra. */
+  function bindImageFallbacks(root) {
+    if (!root || !root.querySelectorAll) return;
+    var imgs = root.querySelectorAll("img[data-fallback]");
+    for (var i = 0; i < imgs.length; i++) {
+      imgs[i].addEventListener("error", onImgError, true);
+    }
   }
   function isOOS(p) {
     return p.status === "out_of_stock";
@@ -126,7 +167,7 @@
 
   /* ---------- thẻ sản phẩm ---------- */
   function cardHTML(p, site) {
-    var cover = coverOf(p);
+    var coverM = coverMedia(p);
     var discount =
       p.discount_percent > 0
         ? '<span class="badge">−' + p.discount_percent + "%</span>"
@@ -146,7 +187,7 @@
     return (
       '<article class="card">' +
       '<a href="' + esc(productUrl(p)) + '" aria-label="' + esc(p.name) + '">' +
-      '<img src="' + esc(cover) + '" alt="' + esc(p.name) + " — " + esc(p.sku) + '" loading="lazy" width="600" height="600"' + (isOOS(p) ? ' class="oos-img"' : "") + ">" +
+      imgHTML(coverM, p.name + " — " + p.sku, ' loading="lazy" width="600" height="600"' + (isOOS(p) ? ' class="oos-img"' : "")) +
       "</a>" +
       discount + oos +
       '<div class="card-body">' +
@@ -202,6 +243,7 @@
         })
         .slice(0, 8);
       grid.innerHTML = featured.map(function (p) { return cardHTML(p, site); }).join("\n");
+      bindImageFallbacks(grid);
     }
     var catGrid = document.getElementById("category-grid");
     if (catGrid) {
@@ -287,6 +329,7 @@
           ? " — sản phẩm hết hàng vẫn hiển thị kèm nhãn “Hết hàng”."
           : ".");
       grid.innerHTML = list.map(function (p) { return cardHTML(p, site); }).join("\n");
+      bindImageFallbacks(grid);
       emptyEl.style.display = list.length ? "none" : "block";
     }
     [qInput, colSelect, stockSelect, sortSelect].forEach(function (el) {
@@ -334,16 +377,16 @@
     }
 
     var media = p.media || [];
-    var mainSrc = coverOf(p);
+    var coverM = coverMedia(p);
     var galleryHTML =
       '<div class="gallery">' +
-      '<img id="main-img" class="main-img" src="' + esc(mainSrc) + '" alt="' + esc(p.name) + " — " + esc(p.sku) + '">' +
+      imgHTML(coverM, p.name + " — " + p.sku, ' id="main-img" class="main-img"') +
       (media.length > 1
         ? '<div class="thumbs">' +
           media.map(function (m, i) {
             return (
-              '<button type="button" data-src="' + esc(m.source_url) + '" class="' + (i === 0 ? "active" : "") + '" aria-label="Ảnh ' + (i + 1) + '">' +
-              '<img src="' + esc(m.source_url) + '" alt="" loading="lazy"></button>'
+              '<button type="button" data-src="' + esc(localSrc(m)) + '" data-fallback="' + esc(fallbackSrc(m)) + '" class="' + (i === 0 ? "active" : "") + '" aria-label="Ảnh ' + (i + 1) + '">' +
+              imgHTML(m, "", ' loading="lazy"') + "</button>"
             );
           }).join("") +
           "</div>"
@@ -417,12 +460,22 @@
     }
 
     box.innerHTML = galleryHTML + '<div id="detail-info-wrap">' + renderInfo() + "</div>";
+    bindImageFallbacks(box);
     bindSite(site);
 
     box.querySelectorAll(".thumbs button").forEach(function (btn) {
       btn.addEventListener("click", function () {
         var main = document.getElementById("main-img");
-        if (main) main.src = btn.getAttribute("data-src");
+        if (main) {
+          main.src = btn.getAttribute("data-src");
+          var fb = btn.getAttribute("data-fallback");
+          if (fb) main.setAttribute("data-fallback", fb);
+          else if (main.removeAttribute) main.removeAttribute("data-fallback");
+          // Ảnh mới: cho phép fallback lại từ đầu nếu ảnh này lỗi.
+          if (main.dataset) delete main.dataset.fbTried;
+          if (main.classList) main.classList.remove("img-broken");
+          if (main.style) main.style.display = "";
+        }
         box.querySelectorAll(".thumbs button").forEach(function (b) { b.classList.remove("active"); });
         btn.classList.add("active");
       });
@@ -475,6 +528,9 @@
     cleanDescription: cleanDescription,
     norm: norm,
     vnd: vnd,
-    defaultVariant: defaultVariant
+    defaultVariant: defaultVariant,
+    onImgError: onImgError,
+    localSrc: localSrc,
+    fallbackSrc: fallbackSrc
   };
 })();
