@@ -164,21 +164,31 @@
     var d = vs.find(function (v) { return v.price && v.price.amount === (p.price && p.price.amount); });
     return d || vs[0] || null;
   }
+  /* GIÁ HIỂN THỊ TRÊN SITE LÀ GIÁ GỐC (compare_at_price), không phải giá
+     sau khuyến mãi. Dữ liệu vẫn giữ nguyên cả 2 giá (price = giá bán sau
+     khuyến mãi, compare_at_price = giá gốc) để sau này cần thì dùng lại,
+     nhưng giao diện chỉ hiện giá gốc, không hiện giá sale, không hiện
+     nhãn % giảm, không hiện "tiết kiệm". */
+  function displayPriceAmount(v, fallbackAmount) {
+    var sale = v && v.price ? v.price.amount : null;
+    var orig = v && v.compare_at_price ? v.compare_at_price.amount : null;
+    if (orig != null && sale != null && orig > sale) return orig;
+    if (sale != null) return sale;
+    return fallbackAmount != null ? fallbackAmount : 0;
+  }
+  function displayPriceOfProduct(p) {
+    var sale = p && p.price ? p.price.amount : null;
+    var orig = p && p.compare_at_price ? p.compare_at_price.amount : null;
+    if (orig != null && sale != null && orig > sale) return orig;
+    return sale != null ? sale : 0;
+  }
 
   /* ---------- thẻ sản phẩm ---------- */
   function cardHTML(p, site) {
     var coverM = coverMedia(p);
-    var discount =
-      p.discount_percent > 0
-        ? '<span class="badge">−' + p.discount_percent + "%</span>"
-        : "";
     var oos = isOOS(p)
       ? '<span class="badge badge-oos">Hết hàng</span>'
       : "";
-    var oldPrice =
-      p.compare_at_price && p.compare_at_price.amount > p.price.amount
-        ? '<span class="old">' + vnd(p.compare_at_price.amount) + "</span>"
-        : "";
     var material = p.attributes && p.attributes.material
       ? "<li><b>Chất liệu:</b> " + esc(p.attributes.material) + "</li>"
       : '<li><b>Chất liệu:</b> <span class="missing">chưa có trên nguồn</span></li>';
@@ -189,11 +199,11 @@
       '<a href="' + esc(productUrl(p)) + '" aria-label="' + esc(p.name) + '">' +
       imgHTML(coverM, p.name + " — " + p.sku, ' loading="lazy" width="600" height="600"' + (isOOS(p) ? ' class="oos-img"' : "")) +
       "</a>" +
-      discount + oos +
+      oos +
       '<div class="card-body">' +
       '<h3><a href="' + esc(productUrl(p)) + '">' + esc(p.name) + "</a></h3>" +
       '<p class="sku">Mã: ' + esc(p.sku) + "</p>" +
-      '<p class="price">' + vnd(p.price.amount) + oldPrice + "</p>" +
+      '<p class="price">' + vnd(displayPriceOfProduct(p)) + "</p>" +
       "<ul class=\"attrs\">" +
       material +
       (colors ? "<li><b>Màu:</b> " + esc(colors) + "</li>" : "") +
@@ -236,11 +246,11 @@
     var site = data.site;
     var grid = document.getElementById("featured-grid");
     if (grid) {
+      /* Trước đây chọn 8 mẫu giảm giá sâu nhất; nay site chỉ hiện giá gốc
+         nên chọn 8 mẫu đầu tiên theo tên A–Z, trung lập và ổn định. */
       var featured = data.products
         .slice()
-        .sort(function (a, b) {
-          return (b.discount_percent || 0) - (a.discount_percent || 0) || (a.name < b.name ? -1 : 1);
-        })
+        .sort(function (a, b) { return a.name < b.name ? -1 : 1; })
         .slice(0, 8);
       grid.innerHTML = featured.map(function (p) { return cardHTML(p, site); }).join("\n");
       bindImageFallbacks(grid);
@@ -318,9 +328,10 @@
         if (stock === "out" && !isOOS(p)) return false;
         return true;
       });
-      if (sort === "price-asc") list.sort(function (a, b) { return a.price.amount - b.price.amount; });
-      else if (sort === "price-desc") list.sort(function (a, b) { return b.price.amount - a.price.amount; });
-      else if (sort === "discount-desc") list.sort(function (a, b) { return (b.discount_percent || 0) - (a.discount_percent || 0); });
+      /* Sắp xếp theo GIÁ GỐC hiển thị, không theo giá sale. Không còn lựa
+         chọn "giảm giá nhiều nhất" vì site không hiện % giảm nữa. */
+      if (sort === "price-asc") list.sort(function (a, b) { return displayPriceOfProduct(a) - displayPriceOfProduct(b); });
+      else if (sort === "price-desc") list.sort(function (a, b) { return displayPriceOfProduct(b) - displayPriceOfProduct(a); });
       else if (sort === "name-asc") list.sort(function (a, b) { return a.name < b.name ? -1 : 1; });
 
       countEl.textContent =
@@ -378,30 +389,119 @@
 
     var media = p.media || [];
     var coverM = coverMedia(p);
-    var galleryHTML =
-      '<div class="gallery">' +
-      imgHTML(coverM, p.name + " — " + p.sku, ' id="main-img" class="main-img"') +
-      (media.length > 1
-        ? '<div class="thumbs">' +
-          media.map(function (m, i) {
-            return (
-              '<button type="button" data-src="' + esc(localSrc(m)) + '" data-fallback="' + esc(fallbackSrc(m)) + '" class="' + (i === 0 ? "active" : "") + '" aria-label="Ảnh ' + (i + 1) + '">' +
-              imgHTML(m, "", ' loading="lazy"') + "</button>"
-            );
-          }).join("") +
-          "</div>"
-        : "") +
-      "</div>";
+    /* Thư viện ảnh sản phẩm: nút Trước/Sau, bấm ảnh chính để xem lớn
+       (lightbox tự viết, không framework), dải ảnh nhỏ trượt ngang.
+       galIndex là ảnh đang xem (0 = ảnh bìa). */
+    var galIndex = 0;
+    function galCount() { return media.length; }
+    /* Phần trong của khung gallery — showImage() render lại chuỗi này
+       mỗi lần chuyển ảnh để số đếm và ảnh nhỏ đang chọn cập nhật. */
+    function galleryInner() {
+      var m = media[galIndex] || coverM;
+      var nav = galCount() > 1
+        ? '<button type="button" class="gal-nav gal-prev" data-gal="prev" aria-label="Ảnh trước">‹</button>' +
+          '<button type="button" class="gal-nav gal-next" data-gal="next" aria-label="Ảnh sau">›</button>' +
+          '<span class="gal-count">' + (galIndex + 1) + " / " + galCount() + "</span>"
+        : "";
+      return (
+        '<div class="main-wrap">' +
+        '<button type="button" class="main-btn" data-gal="zoom" aria-label="Bấm để xem ảnh lớn">' +
+        imgHTML(m, p.name + " — " + p.sku, ' id="main-img" class="main-img"') +
+        "</button>" +
+        nav +
+        "</div>" +
+        (galCount() > 1
+          ? '<div class="thumbs">' +
+            media.map(function (x, i) {
+              return (
+                '<button type="button" data-gal-idx="' + i + '" class="' + (i === galIndex ? "active" : "") + '" aria-label="Ảnh ' + (i + 1) + '">' +
+                imgHTML(x, "", ' loading="lazy"') + "</button>"
+              );
+            }).join("") +
+            "</div>"
+          : "")
+      );
+    }
+    function showImage(i) {
+      var n = galCount();
+      if (!n) return;
+      galIndex = ((i % n) + n) % n;
+      var gal = document.getElementById("gallery");
+      if (gal) {
+        gal.innerHTML = galleryInner();
+        bindImageFallbacks(gal);
+        var active = gal.querySelector(".thumbs button.active");
+        if (active && active.scrollIntoView) active.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }
+    }
+    /* Xem ảnh lớn: lớp phủ toàn màn hình với ảnh hiện tại, nút Trước/Sau,
+       nút đóng, bấm ra nền thì đóng, Esc / phím mũi tên cũng dùng được. */
+    var lbKeyOn = false;
+    function lightboxHTML() {
+      var m = media[galIndex] || coverM;
+      return (
+        '<button type="button" class="lb-close" data-lb="close" aria-label="Đóng">×</button>' +
+        '<button type="button" class="lb-nav lb-prev" data-lb="prev" aria-label="Ảnh trước">‹</button>' +
+        imgHTML(m, p.name + " — " + p.sku, ' class="lb-img"') +
+        '<button type="button" class="lb-nav lb-next" data-lb="next" aria-label="Ảnh sau">›</button>' +
+        '<span class="lb-count">' + (galIndex + 1) + " / " + galCount() + "</span>"
+      );
+    }
+    function refreshLightbox() {
+      var lb = document.getElementById("lightbox");
+      if (lb) {
+        lb.innerHTML = lightboxHTML();
+        bindImageFallbacks(lb);
+      }
+    }
+    function onLbKey(e) {
+      if (!e) return;
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowLeft") { showImage(galIndex - 1); refreshLightbox(); }
+      else if (e.key === "ArrowRight") { showImage(galIndex + 1); refreshLightbox(); }
+    }
+    function closeLightbox() {
+      var lb = document.getElementById("lightbox");
+      if (lb && lb.parentNode && lb.parentNode.removeChild) lb.parentNode.removeChild(lb);
+      if (lbKeyOn && document.removeEventListener) {
+        document.removeEventListener("keydown", onLbKey);
+        lbKeyOn = false;
+      }
+    }
+    function openLightbox() {
+      if (!galCount()) return;
+      var body = document.body;
+      if (!body || !body.appendChild || !document.createElement) return;
+      closeLightbox();
+      var lb = document.createElement("div");
+      lb.className = "lightbox";
+      lb.setAttribute("id", "lightbox");
+      lb.setAttribute("role", "dialog");
+      lb.setAttribute("aria-label", "Xem ảnh lớn");
+      lb.innerHTML = lightboxHTML();
+      bindImageFallbacks(lb);
+      lb.addEventListener("click", function (e) {
+        var t = e.target && e.target.closest ? e.target.closest("[data-lb]") : null;
+        if (!t) {
+          if (e.target === lb) closeLightbox();
+          return;
+        }
+        var a = t.getAttribute("data-lb");
+        if (a === "close") closeLightbox();
+        else if (a === "prev") { showImage(galIndex - 1); refreshLightbox(); }
+        else if (a === "next") { showImage(galIndex + 1); refreshLightbox(); }
+      });
+      body.appendChild(lb);
+      if (document.addEventListener) {
+        document.addEventListener("keydown", onLbKey);
+        lbKeyOn = true;
+      }
+    }
 
     function renderInfo() {
       var v = currentVariant();
-      var price = v ? v.price.amount : p.price.amount;
-      var compare = v && v.compare_at_price ? v.compare_at_price.amount : (p.compare_at_price || {}).amount;
-      var disc = v ? v.discount_percent : p.discount_percent;
-      var old = compare > price ? '<span class="old">' + vnd(compare) + "</span>" : "";
-      var save = compare > price
-        ? '<p class="save-note">Tiết kiệm ' + vnd(compare - price) + " (" + disc + "%) so với giá gốc</p>"
-        : "";
+      /* Giá hiển thị là giá gốc của biến thể đang chọn. */
+      var price = displayPriceAmount(v, displayPriceOfProduct(p));
       var oos = isOOS(p);
       var attrs = p.attributes || {};
       var specRows = [
@@ -425,9 +525,7 @@
       var tableRows = variants.map(function (x) {
         var cur = v && x.sku === v.sku && x.set_type === v.set_type && x.size === v.size;
         return (
-          '<tr class="' + (cur ? "current" : "") + '"><td>' + esc(x.set_type) + "</td><td>" + esc(x.size) + "</td><td>" + vnd(x.price.amount) + "</td><td>" +
-          (x.compare_at_price && x.compare_at_price.amount > x.price.amount ? vnd(x.compare_at_price.amount) : "—") +
-          "</td></tr>"
+          '<tr class="' + (cur ? "current" : "") + '"><td>' + esc(x.set_type) + "</td><td>" + esc(x.size) + "</td><td>" + vnd(displayPriceAmount(x, null)) + "</td></tr>"
         );
       }).join("");
 
@@ -439,8 +537,7 @@
         (oos
           ? '<span class="stock-note oos">Hết hàng — nhắn Zalo để hỏi khi nào có hàng</span>'
           : '<span class="stock-note in">Còn hàng</span>') +
-        '<p class="detail-price">' + vnd(price) + old + "</p>" +
-        save +
+        '<p class="detail-price">' + vnd(price) + "</p>" +
         (groups.length
           ? '<div class="variant-box"><h3>Chọn loại bộ</h3><div class="opt-row" id="set-picker">' + setBtns + "</div>" +
             '<h3>Chọn kích thước</h3><div class="opt-row" id="size-picker">' + sizeBtns + "</div></div>"
@@ -453,34 +550,32 @@
         (desc ? '<h3>Mô tả</h3><p class="desc">' + esc(desc) + "</p>" : "") +
         (variants.length > 1
           ? "<h3>Bảng giá theo loại bộ và kích thước</h3>" +
-            '<table class="price-table"><thead><tr><th>Loại bộ</th><th>Kích thước</th><th>Giá</th><th>Giá gốc</th></tr></thead><tbody>' + tableRows + "</tbody></table>"
+            '<table class="price-table"><thead><tr><th>Loại bộ</th><th>Kích thước</th><th>Giá gốc</th></tr></thead><tbody>' + tableRows + "</tbody></table>"
           : "") +
         "</div>"
       );
     }
 
-    box.innerHTML = galleryHTML + '<div id="detail-info-wrap">' + renderInfo() + "</div>";
+    box.innerHTML = '<div class="gallery" id="gallery">' + galleryInner() + '</div>' + '<div id="detail-info-wrap">' + renderInfo() + "</div>";
     bindImageFallbacks(box);
     bindSite(site);
 
-    box.querySelectorAll(".thumbs button").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var main = document.getElementById("main-img");
-        if (main) {
-          main.src = btn.getAttribute("data-src");
-          var fb = btn.getAttribute("data-fallback");
-          if (fb) main.setAttribute("data-fallback", fb);
-          else if (main.removeAttribute) main.removeAttribute("data-fallback");
-          // Ảnh mới: cho phép fallback lại từ đầu nếu ảnh này lỗi.
-          if (main.dataset) delete main.dataset.fbTried;
-          if (main.classList) main.classList.remove("img-broken");
-          if (main.style) main.style.display = "";
-        }
-        box.querySelectorAll(".thumbs button").forEach(function (b) { b.classList.remove("active"); });
-        btn.classList.add("active");
-      });
-    });
     box.addEventListener("click", function (e) {
+      var t = e.target;
+      /* Thư viện ảnh: nút Trước/Sau / xem lớn / chọn ảnh nhỏ. */
+      var galBtn = t && t.closest ? t.closest("[data-gal]") : null;
+      if (galBtn) {
+        var g = galBtn.getAttribute("data-gal");
+        if (g === "prev") showImage(galIndex - 1);
+        else if (g === "next") showImage(galIndex + 1);
+        else if (g === "zoom") openLightbox();
+        return;
+      }
+      var thumbBtn = t && t.closest ? t.closest("[data-gal-idx]") : null;
+      if (thumbBtn) {
+        showImage(parseInt(thumbBtn.getAttribute("data-gal-idx"), 10) || 0);
+        return;
+      }
       var setBtn = e.target.closest("[data-set]");
       var sizeBtn = e.target.closest("[data-size]");
       if (setBtn) {
@@ -529,6 +624,8 @@
     norm: norm,
     vnd: vnd,
     defaultVariant: defaultVariant,
+    displayPriceOfProduct: displayPriceOfProduct,
+    displayPriceAmount: displayPriceAmount,
     onImgError: onImgError,
     localSrc: localSrc,
     fallbackSrc: fallbackSrc

@@ -453,7 +453,11 @@ async function main() {
         coverage.status = 'default_only';
         coverage.notes.push('variation khong tra ve bien the — dung gia mac dinh tu trang');
       }
-      const media = base.images.slice(0, 3).map((src, i) => ({
+      /* Lấy TOÀN BỘ ảnh trong thư viện của trang nguồn (trước đây giới hạn
+         3 ảnh nên nhiều sản phẩm chỉ có 1–3 ảnh trong khi nguồn có tới
+         14 ảnh). Ảnh mô tả trong nội dung (mo-ta-*) không khớp mẫu
+         -600x0.jpg nên không lọt vào đây. */
+      const media = base.images.map((src, i) => ({
         type: 'image', role: i === 0 ? 'cover' : 'gallery',
         src: `assets/img/products/${String(sku).toLowerCase()}/${i === 0 ? 'cover' : `img-${i + 1}`}.webp`,
         source_url: src, alt: `Bộ chăn ga ${name} - ${sku}`, width: 600, height: null,

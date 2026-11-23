@@ -47,6 +47,12 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
 const css = readFileSync(join(root, "assets/css/style.css"), "utf8");
 check("CSS có breakpoint mobile 480px", css.includes("@media (max-width: 480px)"));
 check("CSS có breakpoint desktop 720px", css.includes("@media (min-width: 720px)"));
+check("CSS có kiểu nút Trước/Sau cho thư viện ảnh", css.includes(".gal-nav") && css.includes(".gal-count"));
+check("CSS có kiểu xem ảnh lớn (lightbox)", css.includes(".lightbox") && css.includes(".lb-img"));
+check("CSS dải ảnh nhỏ trượt ngang", css.includes(".thumbs") && css.includes("overflow-x: auto"));
+/* Scraper lấy toàn bộ ảnh: không còn giới hạn 3 ảnh trong media. */
+const scraper = readFileSync(join(root, "scripts/sync/scrape-full.mjs"), "utf8");
+check("scraper: lấy toàn bộ ảnh, không giới hạn 3 ảnh", scraper.includes("const media = base.images.map(") && !scraper.includes("base.images.slice(0, 3)"));
 
 /* ---------- 2. DOM shim + chạy thử app.js ---------- */
 const ENTITY_MAP = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
@@ -159,7 +165,12 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   const oos = (grid.innerHTML.match(/Hết hàng/g) || []).length;
   check("danh mục: 33 nhãn Hết hàng", oos === 33, "đếm được " + oos);
   check("danh mục: số lượng hiển thị 189 / 189", byId["result-count"].textContent.includes("189 / 189"));
-  check("danh mục: có EPM22064 giá 2.739.000đ", grid.innerHTML.includes("EPM22064") && grid.innerHTML.includes("2.739.000đ"));
+  /* Site chỉ hiện GIÁ GỐC: EPM22064 hiện 4.980.000đ, không hiện giá sale
+     2.739.000đ, không nhãn % giảm, không giá gạch ngang. */
+  check("danh mục: EPM22064 hiện giá gốc 4.980.000đ", grid.innerHTML.includes("EPM22064") && grid.innerHTML.includes("4.980.000đ"));
+  check("danh mục: không hiện giá sale 2.739.000đ", !grid.innerHTML.includes("2.739.000đ"));
+  check("giá gốc: không có nhãn % giảm trong danh sách", !/>−\d+%/.test(grid.innerHTML));
+  check("giá gốc: không có giá gạch ngang trong danh sách", !grid.innerHTML.includes('class="old"'));
   // Ảnh: dùng ảnh tự lưu (media.src) trước, kèm fallback về source_url.
   check("ảnh: thẻ dùng đường dẫn tự lưu assets/img/products/", grid.innerHTML.includes('src="assets/img/products/'));
   check("ảnh: thẻ có data-fallback về nguồn", grid.innerHTML.includes('data-fallback="https://everon.com/'));
@@ -204,7 +215,10 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   await tick(300);
   const box = byId["product-detail"];
   check("chi tiết: render EPM22064", box.innerHTML.includes("EPM22064"));
-  check("chi tiết: giá mặc định 2.739.000đ", box.innerHTML.includes("2.739.000đ"));
+  /* Giá mặc định là GIÁ GỐC 4.980.000đ, không phải giá sale 2.739.000đ. */
+  check("chi tiết: giá mặc định là giá gốc 4.980.000đ", box.innerHTML.includes("4.980.000đ") && !box.innerHTML.includes("2.739.000đ"));
+  check("giá gốc: chi tiết không có nhãn % giảm, không có giá gạch ngang, không có dòng Tiết kiệm", !/>−\d+%/.test(box.innerHTML) && !box.innerHTML.includes('class="old"') && !box.innerHTML.includes("Tiết kiệm"));
+  check("giá gốc: bảng giá chỉ có 1 cột Giá gốc", box.innerHTML.includes("<th>Giá gốc</th>") && !box.innerHTML.includes("<th>Giá</th>"));
   check("chi tiết: có nút chọn Bộ chăn bốn mùa", box.innerHTML.includes("Bộ chăn bốn mùa"));
   check("chi tiết: có bảng giá 4 biến thể", (box.innerHTML.match(/<tr class="/g) || []).length === 4);
   check("chi tiết: mô tả đã cắt phần rác", !box.innerHTML.includes("Chính sách giao hàng"));
@@ -225,12 +239,31 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
     ui.onImgError({ target: noFb });
     check("fallback: không có source_url thì ẩn luôn", noFb.style.display === "none");
   }
-  // Đổi biến thể sang Bộ chăn bốn mùa -> giá 3.102.000đ (180x200, biến thể đầu tiên của nhóm)
+  // Đổi biến thể sang Bộ chăn bốn mùa -> giá gốc 5.640.000đ (180x200, biến thể đầu tiên của nhóm)
   const wrap = doc.getElementById("detail-info-wrap");
   const fakeBtn = { getAttribute: () => "Bộ chăn bốn mùa" };
   box.dispatch("click", { target: { closest: (sel) => (sel === "[data-set]" ? fakeBtn : null) } });
   await tick(50);
-  check("chi tiết: đổi biến thể cập nhật giá 3.102.000đ", wrap.innerHTML.includes("3.102.000đ"));
+  check("chi tiết: đổi biến thể cập nhật giá gốc 5.640.000đ", wrap.innerHTML.includes("5.640.000đ") && !wrap.innerHTML.includes("3.102.000đ"));
+  // Thư viện ảnh: nút Trước/Sau, số đếm, ảnh nhỏ, bấm ảnh chính xem lớn.
+  // (Trạng thái ban đầu đọc từ box.innerHTML; sau mỗi lần chuyển ảnh,
+  //  showImage() render lại vào phần tử #gallery nên đọc từ gal.)
+  const gal = doc.getElementById("gallery");
+  check("thư viện: có nút Trước/Sau và số đếm 1 / 3", box.innerHTML.includes('data-gal="prev"') && box.innerHTML.includes('data-gal="next"') && box.innerHTML.includes("1 / 3"));
+  check("thư viện: ảnh chính có nút xem lớn", box.innerHTML.includes('data-gal="zoom"'));
+  check("thư viện: đủ 3 ảnh nhỏ", (box.innerHTML.match(/data-gal-idx="/g) || []).length === 3);
+  const fakeNext = { getAttribute: () => "next" };
+  box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal]" ? fakeNext : null) } });
+  await tick(50);
+  check("thư viện: bấm Sau sang ảnh 2 / 3", gal.innerHTML.includes("2 / 3") && gal.innerHTML.includes("img-2.webp"));
+  const fakeThumb3 = { getAttribute: () => "2" };
+  box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal-idx]" ? fakeThumb3 : null) } });
+  await tick(50);
+  check("thư viện: bấm ảnh nhỏ thứ 3 sang ảnh 3 / 3", gal.innerHTML.includes("3 / 3") && gal.innerHTML.includes("img-3.webp"));
+  const fakeZoom = { getAttribute: () => "zoom" };
+  box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal]" ? fakeZoom : null) } });
+  await tick(50);
+  check("thư viện: bấm xem lớn không lỗi (môi trường kiểm thử không có body thật)", gal.innerHTML.includes("3 / 3"));
   // Hàm làm sạch mô tả (API kiểm thử)
   const dirty = sandbox.window.EveronUI.cleanDescription("Mô tả thật. Đánh giá ( 0 ) Chính sách giao hàng xyz");
   check("cleanDescription cắt đúng phần rác", dirty === "Mô tả thật.");
