@@ -3,21 +3,30 @@
 #
 # Luồng chạy (thứ tự quan trọng):
 #   1. scrape-full.mjs — cập nhật dữ liệu từ everon.com (sitemap + variation).
+#      Tăng dần THẬT SỰ theo sitemap lastmod (so với lastmod đã lưu trong
+#      data/sync-state.json): chỉ cào lại URL mới/đổi, giữ lại phần còn lại
+#      từ data/products.json. Chủ nhật / full_scan thì --full (cào tất cả).
 #   2. export-site-data.mjs — xuất mảng trần data/products.json + sync-state.json.
 #   3. images.mjs — tải ảnh MỚI/THAY ĐỔI về assets/img/products/<sku>/*.webp,
 #      song song với cập nhật dữ liệu (chạy sau scrape vì cần danh sách
 #      source_url mới nhất). Ảnh không đổi (đã có trong manifest) thì bỏ qua.
 #   4. validate.mjs (+ safety gate) — chặn nếu mất >10% catalog hoặc giá = 0.
 #   5. diff.mjs — tóm tắt thay đổi để đưa vào mô tả PR.
-#   6. peter-evans/create-pull-request — mở PR để DUYỆT THỦ CÔNG, KHÔNG tự merge.
+#   6. Dọn file trung gian — xóa data/products-bo-chan-ga.full.json(.jsonl),
+#      data/state.json, data/run-stats.json, data/discovery.json,
+#      data/sync-diff.json TRƯỚC khi tạo PR, để PR sau chỉ gồm dữ liệu
+#      thật (products.json, sync-state.json, image-manifest.json) + ảnh.
+#      File trung gian chỉ dùng trong lần chạy, không commit nữa.
+#   7. peter-evans/create-pull-request — mở PR để DUYỆT THỦ CÔNG, KHÔNG tự merge.
 #      Action chỉ mở PR khi có thay đổi thật (không có thay đổi thì không làm gì).
 #
 # Lịch: hằng ngày 03:00 giờ Việt Nam (20:00 UTC). Chủ nhật (giờ Việt Nam)
-# quét TOÀN BỘ (bỏ checkpoint); các ngày khác quét tăng dần theo lastmod.
+# quét TOÀN BỘ (bỏ qua lastmod); các ngày khác quét tăng dần theo lastmod.
 # Chạy tay: Actions > Sync catalog > Run workflow, tick full_scan nếu muốn quét toàn bộ.
 #
-# Lần chạy đầu tiên: tải toàn bộ ~400 ảnh (~10 MB WebP) và mở 1 PR lớn chứa
-# cả dữ liệu + ảnh. Các lần sau chỉ tải ảnh mới/thay đổi.
+# Lần chạy đầu tiên sau PR dọn dẹp này sẽ cào lại toàn bộ 189 sản phẩm
+# (vì lastmod đang lưu trên main đều null do regex sitemap cũ sai);
+# từ lần sau trở đi mới tăng dần thật sự.
 name: Sync catalog from everon.com
 
 on:
@@ -82,11 +91,8 @@ jobs:
       - name: Sync catalog (Bộ chăn ga)
         run: |
           if [ "${{ steps.mode.outputs.full }}" = "true" ]; then
-            node scripts/sync/scrape-full.mjs
-          elif [ -f data/discovery.json ]; then
-            node scripts/sync/scrape-full.mjs --resume --skip-discovery
+            node scripts/sync/scrape-full.mjs --full
           else
-            echo "Chưa có data/discovery.json — chạy discovery đầy đủ lần đầu."
             node scripts/sync/scrape-full.mjs
           fi
 
@@ -131,11 +137,31 @@ jobs:
             '',
             '## Kiểm tra',
             '- validate.mjs + safety gate (mất >10% catalog hoặc giá = 0 thì chặn): đã qua.',
-            '- Chi tiết diff đầy đủ xem data/sync-diff.json trong branch này.',
+            '- Xem tab Files changed của PR để thấy toàn bộ file đổi (data/sync-diff.json không còn commit nữa — chỉ dùng trong lần chạy để soạn mô tả này).',
           ];
           fs.writeFileSync('/tmp/PR_BODY.md', lines.join('\n') + '\n');
           console.log('Da soan mo ta PR (' + lines.length + ' dong).');
           "
+
+      - name: Dọn file trung gian (chỉ commit dữ liệu + ảnh)
+        run: |
+          # File trung gian chỉ dùng trong lần chạy, KHÔNG commit nữa:
+          #  - products-bo-chan-ga.full.json(.jsonl): bản wrapper + checkpoint dòng
+          #    (export-site-data đã đọc xong ở bước trước)
+          #  - state.json: checkpoint của scraper (bản sao y hệt products trong
+          #    full.json; lần chạy sau không dùng vì đã tăng dần theo lastmod)
+          #  - run-stats.json: báo cáo lần chạy (không ai đọc lại)
+          #  - discovery.json: kết quả discovery lần này (export đã gộp
+          #    lastmod vào sync-state.json; lần sau discovery lại từ đầu)
+          #  - sync-diff.json: đã dùng xong để soạn mô tả PR ở bước trên
+          # Lệnh chạy SAU bước soạn mô tả PR và TRƯỚC bước tạo PR, nên
+          # create-pull-request sẽ commit đúng phần còn lại: products.json,
+          # sync-state.json, image-manifest.json và ảnh. Lần chạy đầu tiên
+          # sau PR này, lệnh còn xóa luôn 6 file trên khỏi main (đang commit
+          # sẵn từ PR #8) vì chúng là file đã theo dõi (tracked) bị xóa.
+          rm -f data/products-bo-chan-ga.full.json data/products-bo-chan-ga.full.jsonl data/state.json data/run-stats.json data/discovery.json data/sync-diff.json
+          echo "Đã dọn file trung gian. File data/ còn lại:"
+          ls -la data/
 
       - name: Mở PR để duyệt thủ công
         uses: peter-evans/create-pull-request@v6
