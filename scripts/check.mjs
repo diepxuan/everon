@@ -81,6 +81,10 @@ check("app.js vẽ địa điểm từ site.locations", appJs.includes("[data-lo
 /* Scraper lấy toàn bộ ảnh: không còn giới hạn 3 ảnh trong media. */
 const scraper = readFileSync(join(root, "scripts/sync/scrape-full.mjs"), "utf8");
 check("scraper: lấy toàn bộ ảnh, không giới hạn 3 ảnh", scraper.includes("const media = base.images.map(") && !scraper.includes("base.images.slice(0, 3)"));
+/* Tăng dần thật sự theo lastmod (sửa 23/11/2026): regex sitemap đọc đúng
+   thứ tự thẻ, so sánh với lastmod đã lưu trong sync-state.json, --full
+   chỉ dùng cho quét toàn bộ. */
+check("scraper: tăng dần theo lastmod (so sánh sync-state.json)", scraper.includes("sync-state.json") && scraper.includes("isChanged") && scraper.includes("--full"));
 
 /* ---------- 2. DOM shim + chạy thử app.js ---------- */
 const ENTITY_MAP = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
