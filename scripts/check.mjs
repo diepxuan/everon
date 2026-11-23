@@ -35,14 +35,15 @@ for (const f of files) {
     !/everon\.com/i.test(src)
   );
 }
-/* Link href trong HTML: chỉ cho phép nội bộ, #..., zalo.me, tel:, mailto: */
+/* Link href trong HTML: chỉ cho phép nội bộ, #..., zalo.me, tel:, mailto:,
+   và link bản đồ Google tới showroom (nút "Xem bản đồ" trong thẻ địa điểm). */
 for (const f of files.filter((x) => x.endsWith(".html"))) {
   const src = readFileSync(f, "utf8");
   const hrefs = [...src.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
   const bad = hrefs.filter(
-    (h) => /^https?:\/\//i.test(h) && !h.startsWith("https://zalo.me/")
+    (h) => /^https?:\/\//i.test(h) && !h.startsWith("https://zalo.me/") && !h.startsWith("https://www.google.com/maps/")
   );
-  check("link ngoài chỉ có Zalo: " + f.replace(root + "/", ""), bad.length === 0, bad.join(", "));
+  check("link ngoài chỉ có Zalo + bản đồ Google: " + f.replace(root + "/", ""), bad.length === 0, bad.join(", "));
 }
 const css = readFileSync(join(root, "assets/css/style.css"), "utf8");
 check("CSS có breakpoint mobile 480px", css.includes("@media (max-width: 480px)"));
@@ -50,6 +51,33 @@ check("CSS có breakpoint desktop 720px", css.includes("@media (min-width: 720px
 check("CSS có kiểu nút Trước/Sau cho thư viện ảnh", css.includes(".gal-nav") && css.includes(".gal-count"));
 check("CSS có kiểu xem ảnh lớn (lightbox)", css.includes(".lightbox") && css.includes(".lb-img"));
 check("CSS dải ảnh nhỏ trượt ngang", css.includes(".thumbs") && css.includes("overflow-x: auto"));
+/* 2 địa điểm theo Google Business Profile (kiểm tra 23/11/2026). */
+const siteJson = JSON.parse(readFileSync(join(root, "data/site.json"), "utf8"));
+check("site.json: có 2 địa điểm", Array.isArray(siteJson.locations) && siteJson.locations.length === 2);
+const loc241 = (siteJson.locations || []).find((l) => l.id === "tran-hung-dao");
+const locMG = (siteJson.locations || []).find((l) => l.id === "mg15-vincom");
+check(
+  "site.json: 241 Trần Hưng Đạo, giờ 07:30–21:00 (đã sửa trên Google 23/11)",
+  !!loc241 && loc241.address.includes("241 Trần Hưng Đạo") && loc241.hours === "07:30–21:00" && loc241.phone === "0363 089 565" && (loc241.maps_url || "").startsWith("https://www.google.com/maps/")
+);
+check(
+  "site.json: MG15 Vincom, giờ 07:30–21:00 theo Google",
+  !!locMG && locMG.address.includes("MG15") && locMG.hours === "07:30–21:00" && locMG.phone === "0363 089 565" && (locMG.maps_url || "").startsWith("https://www.google.com/maps/")
+);
+check(
+  "site.json: 241 có đánh giá 4.7 (3 đánh giá), MG15 không ghi đánh giá",
+  !!loc241 && loc241.rating === 4.7 && loc241.reviews === 3 && !!locMG && !("rating" in locMG)
+);
+for (const f of files.filter((x) => x.endsWith(".html"))) {
+  const src = readFileSync(f, "utf8");
+  const rel = f.replace(root + "/", "");
+  check("HTML có cả 2 địa chỉ showroom: " + rel, src.includes("241 Trần Hưng Đạo") && src.includes("MG15 Shophouse Vincom"));
+  check("HTML có giờ cả 2 showroom (07:30–21:00): " + rel, (src.match(/07:30–21:00/g) || []).length === 2);
+  check("HTML footer ghi cả 2 showroom: " + rel, src.includes("241 Trần Hưng Đạo · MG15 Shophouse Vincom"));
+}
+check("CSS có lưới 2 địa điểm", css.includes(".loc-grid") && css.includes(".loc-card"));
+const appJs = readFileSync(join(root, "assets/js/app.js"), "utf8");
+check("app.js vẽ địa điểm từ site.locations", appJs.includes("[data-locations]") && appJs.includes("site.locations") && appJs.includes("locationsHTML"));
 /* Scraper lấy toàn bộ ảnh: không còn giới hạn 3 ảnh trong media. */
 const scraper = readFileSync(join(root, "scripts/sync/scrape-full.mjs"), "utf8");
 check("scraper: lấy toàn bộ ảnh, không giới hạn 3 ảnh", scraper.includes("const media = base.images.map(") && !scraper.includes("base.images.slice(0, 3)"));
@@ -83,9 +111,6 @@ class MiniElement {
   set innerHTML(v) {
     this._innerHTML = String(v);
     if (this.tagName === "TEXTAREA") this.value = decodeEntities(this._innerHTML);
-    // Đăng ký các phần tử có id để getElementById tìm được sau khi render.
-    // Riêng #detail-info-wrap là phần tử cuối trong chuỗi nên lấy được nội dung
-    // bằng cách cắt tới thẻ </div> cuối cùng của chuỗi.
     const s = this._innerHTML;
     for (const m of s.matchAll(/id="([^"]+)"/g)) {
       const el = new MiniElement("div");
@@ -138,7 +163,6 @@ function makeEnv({ page, search }) {
   };
   vm.createContext(sandbox);
   vm.runInContext(readFileSync(join(root, "assets/js/app.js"), "utf8"), sandbox);
-  // Kích hoạt DOMContentLoaded -> init() chạy, fetch là async nên chờ 1 tick dài.
   (doc._domHandlers.DOMContentLoaded || []).forEach((fn) => fn());
   return { sandbox, doc, byId };
 }
@@ -155,6 +179,17 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   check("trang chủ: không có link ra ngoài trong HTML render", !/href="https?:\/\/(?!zalo\.me)/.test(feat));
 }
 
+/* Địa điểm: render từ site.json */
+{
+  const { sandbox } = makeEnv({ page: "home", search: "" });
+  await tick(300);
+  const locHtml = sandbox.window.EveronUI.locationsHTML(siteJson);
+  check("locations: render đủ 2 thẻ địa điểm", (locHtml.match(/<article class="loc-card">/g) || []).length === 2);
+  check("locations: render có giờ 07:30–21:00 cả 2 chỗ", (locHtml.match(/07:30–21:00/g) || []).length === 2);
+  check("locations: render có link bản đồ cả 2 chỗ", (locHtml.match(/google\.com\/maps/g) || []).length === 2);
+  check("locations: chỉ 241 có đánh giá sao", (locHtml.match(/★/g) || []).length === 1 && locHtml.includes("4,7★"));
+}
+
 /* Trang danh mục */
 {
   const { byId } = makeEnv({ page: "category", search: "" });
@@ -165,22 +200,17 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   const oos = (grid.innerHTML.match(/Hết hàng/g) || []).length;
   check("danh mục: 33 nhãn Hết hàng", oos === 33, "đếm được " + oos);
   check("danh mục: số lượng hiển thị 189 / 189", byId["result-count"].textContent.includes("189 / 189"));
-  /* Site chỉ hiện GIÁ GỐC: EPM22064 hiện 4.980.000đ, không hiện giá sale
-     2.739.000đ, không nhãn % giảm, không giá gạch ngang. */
   check("danh mục: EPM22064 hiện giá gốc 4.980.000đ", grid.innerHTML.includes("EPM22064") && grid.innerHTML.includes("4.980.000đ"));
   check("danh mục: không hiện giá sale 2.739.000đ", !grid.innerHTML.includes("2.739.000đ"));
   check("giá gốc: không có nhãn % giảm trong danh sách", !/>−\d+%/.test(grid.innerHTML));
   check("giá gốc: không có giá gạch ngang trong danh sách", !grid.innerHTML.includes('class="old"'));
-  // Ảnh: dùng ảnh tự lưu (media.src) trước, kèm fallback về source_url.
   check("ảnh: thẻ dùng đường dẫn tự lưu assets/img/products/", grid.innerHTML.includes('src="assets/img/products/'));
   check("ảnh: thẻ có data-fallback về nguồn", grid.innerHTML.includes('data-fallback="https://everon.com/'));
-  // Bộ lọc: tìm theo mã
   const q = byId["filter-q"];
   q.value = "EPM22064";
   q.dispatch("input");
   await tick(50);
   check("lọc: tìm EPM22064 ra 1 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 1);
-  // Bộ lọc: hết hàng
   q.value = "";
   q.dispatch("input");
   const stock = byId["filter-stock"];
@@ -188,7 +218,6 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   stock.dispatch("change");
   await tick(50);
   check("lọc: hết hàng ra 33 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 33);
-  // Bộ lọc: bộ sưu tập everon-2027
   stock.value = "";
   stock.dispatch("change");
   const col = byId["filter-collection"];
@@ -198,7 +227,6 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   col.dispatch("change");
   await tick(50);
   check("lọc: Everon 2027 ra 25 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 25);
-  // Sắp xếp giá tăng dần
   col.value = "";
   col.dispatch("change");
   const sort = byId["filter-sort"];
@@ -215,7 +243,6 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   await tick(300);
   const box = byId["product-detail"];
   check("chi tiết: render EPM22064", box.innerHTML.includes("EPM22064"));
-  /* Giá mặc định là GIÁ GỐC 4.980.000đ, không phải giá sale 2.739.000đ. */
   check("chi tiết: giá mặc định là giá gốc 4.980.000đ", box.innerHTML.includes("4.980.000đ") && !box.innerHTML.includes("2.739.000đ"));
   check("giá gốc: chi tiết không có nhãn % giảm, không có giá gạch ngang, không có dòng Tiết kiệm", !/>−\d+%/.test(box.innerHTML) && !box.innerHTML.includes('class="old"') && !box.innerHTML.includes("Tiết kiệm"));
   check("giá gốc: bảng giá chỉ có 1 cột Giá gốc", box.innerHTML.includes("<th>Giá gốc</th>") && !box.innerHTML.includes("<th>Giá</th>"));
@@ -224,7 +251,6 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   check("chi tiết: mô tả đã cắt phần rác", !box.innerHTML.includes("Chính sách giao hàng"));
   check("chi tiết: có nút Nhắn Zalo kèm mã SP", box.innerHTML.includes("zalo.me") && box.innerHTML.includes("EPM22064"));
   check("chi tiết: ảnh chính dùng đường dẫn tự lưu, có fallback", box.innerHTML.includes('src="assets/img/products/') && box.innerHTML.includes('data-fallback="https://everon.com/'));
-  // Fallback ảnh: lỗi lần 1 -> đổi sang source_url; lỗi lần 2 -> ẩn ảnh.
   {
     const ui = sandbox.window.EveronUI;
     const fakeImg = doc.createElement("img");
@@ -239,15 +265,11 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
     ui.onImgError({ target: noFb });
     check("fallback: không có source_url thì ẩn luôn", noFb.style.display === "none");
   }
-  // Đổi biến thể sang Bộ chăn bốn mùa -> giá gốc 5.640.000đ (180x200, biến thể đầu tiên của nhóm)
   const wrap = doc.getElementById("detail-info-wrap");
   const fakeBtn = { getAttribute: () => "Bộ chăn bốn mùa" };
   box.dispatch("click", { target: { closest: (sel) => (sel === "[data-set]" ? fakeBtn : null) } });
   await tick(50);
   check("chi tiết: đổi biến thể cập nhật giá gốc 5.640.000đ", wrap.innerHTML.includes("5.640.000đ") && !wrap.innerHTML.includes("3.102.000đ"));
-  // Thư viện ảnh: nút Trước/Sau, số đếm, ảnh nhỏ, bấm ảnh chính xem lớn.
-  // (Trạng thái ban đầu đọc từ box.innerHTML; sau mỗi lần chuyển ảnh,
-  //  showImage() render lại vào phần tử #gallery nên đọc từ gal.)
   const gal = doc.getElementById("gallery");
   check("thư viện: có nút Trước/Sau và số đếm 1 / 3", box.innerHTML.includes('data-gal="prev"') && box.innerHTML.includes('data-gal="next"') && box.innerHTML.includes("1 / 3"));
   check("thư viện: ảnh chính có nút xem lớn", box.innerHTML.includes('data-gal="zoom"'));
@@ -264,7 +286,6 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal]" ? fakeZoom : null) } });
   await tick(50);
   check("thư viện: bấm xem lớn không lỗi (môi trường kiểm thử không có body thật)", gal.innerHTML.includes("3 / 3"));
-  // Hàm làm sạch mô tả (API kiểm thử)
   const dirty = sandbox.window.EveronUI.cleanDescription("Mô tả thật. Đánh giá ( 0 ) Chính sách giao hàng xyz");
   check("cleanDescription cắt đúng phần rác", dirty === "Mô tả thật.");
 }
