@@ -25,9 +25,9 @@
 //    thư mục làm việc này.
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath } from 'node:url', '..';
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const BASE = 'https://everon.com';
 const CATEGORY_URL = `${BASE}/danh-muc-san-pham/bo-chan-ga`;
 const SITEMAP_URL = `${BASE}/sitemap.xml`;
