@@ -217,6 +217,24 @@
     );
   }
 
+  /* Thẻ 2 showroom (địa chỉ + giờ theo Google Business Profile).
+     HTML tĩnh trong trang đã có sẵn 2 thẻ giống hệt để xem được khi
+     chưa tải xong dữ liệu; hàm này vẽ lại từ site.locations để dữ
+     liệu và giao diện không lệch nhau. */
+  function locationsHTML(site) {
+    return (site.locations || []).map(function (loc) {
+      var phone = String(loc.phone || "").replace(/\s/g, "");
+      return '<article class="loc-card">' +
+        "<h3>" + esc(loc.name) + "</h3>" +
+        "<p><b>Địa chỉ:</b> " + esc(loc.address) + "</p>" +
+        "<p><b>Giờ mở cửa:</b> " + esc(loc.hours) + " hằng ngày.</p>" +
+        '<p><b>Điện thoại:</b> <a href="tel:' + esc(phone) + '">' + esc(loc.phone) + "</a>" +
+        (loc.maps_url ? ' · <a href="' + esc(loc.maps_url) + '" target="_blank" rel="noopener">Xem bản đồ</a>' : "") + "</p>" +
+        (loc.rating ? "<p><b>Đánh giá:</b> " + esc(String(loc.rating).replace(".", ",")) + "★ (" + esc(String(loc.reviews || 0)) + " đánh giá trên Google)</p>" : "") +
+        "</article>";
+    }).join("");
+  }
+
   /* ---------- gắn thông tin showroom / Zalo từ site.json ---------- */
   function bindSite(site) {
     document.querySelectorAll("[data-site-address]").forEach(function (el) {
@@ -227,6 +245,9 @@
     });
     document.querySelectorAll("[data-site-serving]").forEach(function (el) {
       el.textContent = site.showroom.serving_note || "";
+    });
+    document.querySelectorAll("[data-locations]").forEach(function (el) {
+      el.innerHTML = locationsHTML(site);
     });
     document.querySelectorAll("[data-site-distributor]").forEach(function (el) {
       el.textContent = site.distributor;
@@ -626,6 +647,7 @@
     defaultVariant: defaultVariant,
     displayPriceOfProduct: displayPriceOfProduct,
     displayPriceAmount: displayPriceAmount,
+    locationsHTML: locationsHTML,
     onImgError: onImgError,
     localSrc: localSrc,
     fallbackSrc: fallbackSrc

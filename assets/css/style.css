@@ -335,6 +335,10 @@ main { padding: 8px 0 40px; }
 .showroom h2 { margin: 0 0 8px; font-size: 20px; }
 .showroom p { margin: 5px 0; }
 .showroom .cta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.loc-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 12px 0 4px; }
+.loc-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; background: var(--card); }
+.loc-card h3 { margin: 0 0 6px; font-size: 16px; }
+.loc-card p { margin: 4px 0; font-size: 14.5px; }
 .site-footer {
   background: var(--navy);
   color: #cdd8e4;
@@ -351,6 +355,7 @@ main { padding: 8px 0 40px; }
   .hero h1 { font-size: 38px; }
   .cat-grid { grid-template-columns: repeat(3, 1fr); }
   .why-grid { grid-template-columns: repeat(3, 1fr); }
+  .loc-grid { grid-template-columns: 1fr 1fr; }
   .filters { grid-template-columns: 2fr 1fr 1fr 1fr; align-items: end; }
   .detail { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; }
   .gallery { position: sticky; top: 76px; }
