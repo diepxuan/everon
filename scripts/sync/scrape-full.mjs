@@ -3,10 +3,22 @@
 // Mở rộng từ scripts/scrape-bo-chan-ga.mjs (bản thử 7 sản phẩm).
 //
 // Chạy:
-//   node scripts/scrape-full.mjs                  (toàn bộ 189 sản phẩm)
-//   node scripts/scrape-full.mjs --limit 5        (chạy thử 5 sản phẩm đầu)
-//   node scripts/scrape-full.mjs --resume         (tiếp tục từ checkpoint, bỏ qua SKU đã xong)
-//   node scripts/scrape-full.mjs --limit 5 --out data/test.json
+//   node scripts/sync/scrape-full.mjs                  (tăng dần: chỉ cào
+//     lại URL mới/đổi theo sitemap lastmod, giữ lại phần còn lại từ
+//     data/products.json; lần đầu hoặc khi chưa có lastmod cũ thì cào
+//     toàn bộ)
+//   node scripts/sync/scrape-full.mjs --full           (quét toàn bộ,
+//     bỏ qua lastmod — Chủ nhật và chạy tay full_scan dùng cờ này)
+//   node scripts/sync/scrape-full.mjs --limit 5        (chạy thử 5 sản phẩm đầu)
+//   node scripts/sync/scrape-full.mjs --resume         (tiếp tục từ checkpoint
+//     data/state.json — chỉ dùng khi chạy tay trên máy, workflow không dùng)
+//   node scripts/sync/scrape-full.mjs --limit 5 --out data/test.json
+//
+// TĂNG DẦN THEO LASTMOD (sửa 23/11/2026): lastmod lấy từ sitemap.xml
+// (đã sửa regex — trước đây regex sai nên lastmod luôn null) so với
+// lastmod đã lưu trong data/sync-state.json (do export-site-data.mjs
+// duy trì). URL không đổi được giữ lại từ data/products.json, không
+// cào lại. Chủ nhật quét toàn bộ để bắt mọi thay đổi mà lastmod bỏ sót.
 //
 // NGUYÊN TẮC (theo phương án + quyết định đã chốt 22/11/2026):
 //  - Nguồn: everon.com, đã được Everpia đồng ý dùng toàn bộ catalog.
@@ -44,6 +56,7 @@ const argVal = (name) => {
 const LIMIT = Number(argVal('--limit') ?? NaN);
 const RESUME = args.includes('--resume');
 const SKIP_DISCOVERY = args.includes('--skip-discovery');
+const FULL = args.includes('--full'); // quet toan bo: bo qua lastmod, cao lai tat ca URL
 const OUT = argVal('--out') ?? 'data/products-bo-chan-ga.full.json';
 const STATE_FILE = 'data/state.json';
 const JSONL_FILE = 'data/products-bo-chan-ga.full.jsonl';
@@ -119,8 +132,17 @@ const slugify = (name, sku) => {
 // ---------- Discovery: sitemap + phan trang danh muc ----------
 async function discover() {
   const sm = await fetchText(SITEMAP_URL, { accept: 'application/xml, text/html' });
-  const entries = [...sm.matchAll(/<url>\s*<loc>([^<]+)<\/loc>(?:\s*<lastmod>([^<]+)<\/lastmod>)?/g)]
-    .map((m) => ({ url: m[1], lastmod: m[2] ?? null }));
+  // Sitemap that su lastmod cho MOI URL, nhung thu tu the la
+  // <loc> -> <priority> -> <lastmod> -> <changefreq>. Regex cu chi bat
+  // <lastmod> khi no dung ngay sau </loc> nen luon tra null (da kiem
+  // chung 23/11/2026: ca 189 URL danh muc deu null). Doc theo tung khoi
+  // <url>...</url> va lay loc + lastmod rieng thi moi dung.
+  const entries = [...sm.matchAll(/<url>([\s\S]*?)<\/url>/g)]
+    .map((m) => ({
+      url: m[1].match(/<loc>([^<]+)<\/loc>/)?.[1] ?? null,
+      lastmod: m[1].match(/<lastmod>([^<]+)<\/lastmod>/)?.[1] ?? null,
+    }))
+    .filter((e) => e.url);
   const sitemapProducts = entries.filter((e) => e.url.includes('/san-pham/'));
   console.log(`[discovery] sitemap: ${entries.length} URL, trong do ${sitemapProducts.length} URL san-pham`);
   const sitemapSet = new Set(sitemapProducts.map((e) => e.url));
@@ -385,6 +407,44 @@ async function main() {
   if (Number.isFinite(LIMIT)) urls = urls.slice(0, LIMIT);
   console.log(`[full] Se chay ${urls.length} san pham`);
 
+  // --- Tang dan THAT SU theo sitemap lastmod (sua 23/11/2026) ---
+  // Truoc day workflow ghi "quet tang dan theo lastmod" nhung code khong
+  // he so sanh lastmod: che do --resume chi nap lai state.json roi bo qua
+  // MOI URL da co trong do, nen lan chay ngay thu chi viet lai du lieu cu
+  // (gia moi khong bao gio duoc cap nhat). Bay gio:
+  //  - lastmod moi lay tu discovery vua chay (da sua regex, co gia tri that);
+  //  - lastmod cu lay tu data/sync-state.json (export-site-data.mjs duy tri);
+  //  - URL duoc cao lai khi: moi (chua co trong products.json), hoac
+  //    khong co tin hieu lastmod o mot trong hai ben (cao lai cho chac),
+  //    hoac lastmod doi. URL khong doi duoc GIU LAI tu products.json.
+  //  - San pham khong con trong discovery (bi go khoi danh muc) se roi
+  //    khoi ket qua (hien o diff dang removed) vi khong duoc seed lai.
+  //  - Chu nhat / --full: bo qua lastmod, cao lai tat ca.
+  // Luu y chuyen tiep: lastmod dang luu tren main hien deu null (do regex
+  // cu), nen lan chay dau tien sau PR nay se cao lai toan bo 189 san pham
+  // (nhu mot lan full scan); tu lan sau tro di moi tang dan that su.
+  let prevProducts = [];
+  try {
+    const rawPrev = JSON.parse(readFileSync(`${ROOT}/data/products.json`, 'utf8'));
+    prevProducts = Array.isArray(rawPrev) ? rawPrev : rawPrev.products ?? [];
+  } catch { /* chua co ban truoc: cao toan bo */ }
+  let prevLastmod = {};
+  try {
+    prevLastmod = JSON.parse(readFileSync(`${ROOT}/data/sync-state.json`, 'utf8')).url_lastmod ?? {};
+  } catch { /* chua co sync-state: coi nhu chua co lastmod */ }
+  const freshLastmod = discovery.lastmod_by_url ?? {};
+  const prevByUrl = new Map(prevProducts.map((p) => [p.source?.url, p]).filter(([u]) => u));
+  const isChanged = (url) => {
+    if (!prevByUrl.has(url)) return true; // URL moi
+    const oldLm = prevLastmod[url];
+    const newLm = freshLastmod[url];
+    if (oldLm == null || newLm == null) return true; // khong co tin hieu -> cao lai
+    return oldLm !== newLm;
+  };
+  const changedUrls = FULL ? urls : urls.filter(isChanged);
+  console.log(`[tang-dan] ${changedUrls.length}/${urls.length} URL moi/doi theo lastmod${FULL ? ' (full scan: cao tat ca)' : ''}`);
+  let reusedUnchanged = 0;
+
   // Doc ban thu 7 san pham de doi chieu gia.
   let trialBySku = {};
   try {
@@ -393,6 +453,19 @@ async function main() {
   } catch { /* bo qua neu khong co file thu */ }
 
   let done = new Map();
+  // Giu lai san pham KHONG DOI tu ban truoc (khong cao lai). Chi seed
+  // nhung URL van con trong discovery lan nay va khong nam trong danh
+  // sach doi: URL doi slug (khong con trong urls) se khong duoc seed,
+  // tranh truong hop trung SKU giu lai ban cu; san pham bi go khoi danh
+  // muc cung khong duoc seed nen roi khoi ket qua.
+  if (!FULL) {
+    for (const p of prevProducts) {
+      const u = p.source?.url;
+      if (u && urls.includes(u) && !changedUrls.includes(u)) done.set(p.sku, p);
+    }
+    reusedUnchanged = done.size;
+    console.log(`[tang-dan] Giu lai ${reusedUnchanged} san pham khong doi tu data/products.json`);
+  }
   if (RESUME && existsSync(`${ROOT}/${STATE_FILE}`)) {
     const st = JSON.parse(readFileSync(`${ROOT}/${STATE_FILE}`, 'utf8'));
     for (const p of st.products ?? []) done.set(p.sku, p);
@@ -513,6 +586,12 @@ async function main() {
   }
 
   const products = [...done.values()];
+  // Giu thu tu san pham theo thu tu URL discovery (giong lan chay full),
+  // tranh viec tang dan xao tron thu tu trong products.json: san pham
+  // giu lai dung truoc, san pham moi cao ve chen them vao cuoi lam lech
+  // diff va thu tu hien thi mac dinh tren trang danh muc.
+  const orderIdx = new Map(urls.map((u, i) => [u, i]));
+  products.sort((a, b) => (orderIdx.get(a.source?.url) ?? 1e9) - (orderIdx.get(b.source?.url) ?? 1e9));
   const out = {
     schema_version: 1,
     category: { id: 'bo-chan-ga', name: 'Bộ chăn ga', product_count_on_source: discovery.category_count_on_source, source_url: CATEGORY_URL },
@@ -526,6 +605,9 @@ async function main() {
     crawled_at: new Date().toISOString(),
     discovery: { ...discovery, urls: undefined, lastmod_by_url: undefined },
     total_urls: urls.length,
+    changed_urls: changedUrls.length,
+    reused_unchanged: reusedUnchanged,
+    full_scan: FULL,
     success: products.length,
     skipped: skipped.length,
     out_of_stock: products.filter((p) => p.status === 'out_of_stock').length,
