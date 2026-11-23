@@ -1,0 +1,1551 @@
+{
+  "crawled_at": "2026-11-23T04:11:18.398Z",
+  "discovery": {
+    "crawled_at": "2026-11-23T02:48:11.929Z",
+    "category_url": "https://everon.com/danh-muc-san-pham/bo-chan-ga",
+    "category_count_on_source": 189,
+    "category_pages_fetched": 12,
+    "category_urls_found": 189,
+    "category_urls_unique": 189,
+    "sitemap_total_urls": 1543,
+    "sitemap_product_urls": 755,
+    "sitemap_product_urls_not_in_category": 566,
+    "category_urls_not_in_sitemap": []
+  },
+  "total_urls": 189,
+  "success": 189,
+  "skipped": 0,
+  "out_of_stock": 33,
+  "missing_material": [
+    "FRYARN",
+    "ESTMC27012",
+    "ICEDREAM"
+  ],
+  "missing_colors": [
+    "FRYARN",
+    "MAISON",
+    "ICEDREAM"
+  ],
+  "missing_collections": [],
+  "price_table": {
+    "full": 167,
+    "partial": 12,
+    "default_only": 10
+  },
+  "price_changes_vs_trial": [],
+  "skipped_list": [],
+  "coverage": [
+    {
+      "sku": "FRYARN",
+      "name": "Bộ tấm trải làm mát Frost Yarn",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "CPM27202",
+      "name": "Track & Tail",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC27027",
+      "name": "Beech",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTMC27012",
+      "name": "Pinnate",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTMC27002",
+      "name": "Espirit",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BPC704",
+      "name": "Pinstripe",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BPC703",
+      "name": "Melange",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BPC702",
+      "name": "Gingham",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BPC701",
+      "name": "Horizon",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BSL714",
+      "name": "Sage",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BSL713",
+      "name": "Cloud",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 6,
+      "notes": []
+    },
+    {
+      "sku": "BSL712",
+      "name": "Sandy",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BSL711",
+      "name": "Mist",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "BSL710",
+      "name": "Dusty",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "CPC27203",
+      "name": "Rabbit & Bear",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "CPC27201",
+      "name": "Elf",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTMC27028",
+      "name": "Cottage",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTMC27022",
+      "name": "Citrus",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPMOC27025",
+      "name": "Lilies",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPMOC27024",
+      "name": "Dawn",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC27033",
+      "name": "Rustic",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC27023",
+      "name": "Toile De Jouy",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC27021",
+      "name": "Herb",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC27036",
+      "name": "Coastal",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC27032",
+      "name": "Saville",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC27031",
+      "name": "Linear",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM27034",
+      "name": "Ocean",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTMC27011",
+      "name": "Foliage",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTMC27003",
+      "name": "Broderie",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESMOC27008",
+      "name": "Blush",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTC27006",
+      "name": "Pine",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTC27005",
+      "name": "Mimosa",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTC27004",
+      "name": "Valley",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTC27001",
+      "name": "Ginkgo",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTJ27020",
+      "name": "Lilac",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTJ27017",
+      "name": "Art Decor",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB27014",
+      "name": "Meteor",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB27007",
+      "name": "Tide",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTMC26001",
+      "name": "Ngọc Thanh Liễu",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM26002",
+      "name": "Vườn nắng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTC26003",
+      "name": "Mẫu đơn tím",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM26004",
+      "name": "Đồng ca hoa cỏ",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB26005",
+      "name": "Mặt hồ xanh",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTMC26006",
+      "name": "Cánh đồng vàng",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTC26007",
+      "name": "Cẩm chướng đỏ",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTJ26008",
+      "name": "Herringbone",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTJ26009",
+      "name": "Hồng tỉ muội",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB26010",
+      "name": "Gợn sóng biếc",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC26011",
+      "name": "Thu Thiên Thanh",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC26012",
+      "name": "Vườn cổ điển",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC26013",
+      "name": "Mùa quả dại",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "CPT26201",
+      "name": "Vườn thú trên mây",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "CPT26202",
+      "name": "Khu rừng cổ tích",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "CPC26203",
+      "name": "Xứ sở thần tiên",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "CPC26204",
+      "name": "Cuộc phiêu lưu của Cổ Dài & Ba Sừng",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC26014",
+      "name": "Sách Hoa",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT26015",
+      "name": "Monstera",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC26016",
+      "name": "Lá Thu Đỏ",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC26017",
+      "name": "Chạng Vạng",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC26018",
+      "name": "Muôn Hoa Vàng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "MAISON",
+      "name": "Bộ chăn ga Maison",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 1,
+      "notes": []
+    },
+    {
+      "sku": "EPT25029",
+      "name": "Hồ Sâu Sắc",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 7,
+      "notes": []
+    },
+    {
+      "sku": "EPM25028",
+      "name": "Đích Đến Hạnh Phúc",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT25027",
+      "name": "Khởi Đầu Lạc Quan",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25026",
+      "name": "Chùm Lá Tinh Tế",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPBC25025",
+      "name": "Cánh Rừng Hy Vọng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST25024",
+      "name": "Nét Kiên Định",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM25023",
+      "name": "Nét Khiêm Tốn",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST25022",
+      "name": "Khóm Hoa Rung Động",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25021",
+      "name": "Thung Lũng Thấu Hiểu",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 7,
+      "notes": []
+    },
+    {
+      "sku": "ESM25019",
+      "name": "Yêu Nồng Nhiệt",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT25018",
+      "name": "Nét Chân Thành",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25041",
+      "name": "Đốm Sáng",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT25017",
+      "name": "Mơ Êm",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25043",
+      "name": "Dải Màu Mạnh Mẽ",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST25042",
+      "name": "Hoa Thêu Xám",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST25040",
+      "name": "Cánh Hoa Vàng",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25039",
+      "name": "Kẻ Giao Thoa",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25038",
+      "name": "Đường Sọc Ngang",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC25037",
+      "name": "Kỷ Hà Xám",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC25035",
+      "name": "Đường Song Song",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST25034",
+      "name": "Làn Nước Xanh",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25032",
+      "name": "Hương Cây Cỏ",
+      "variants": 4,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25031",
+      "name": "Lá Thạch Thảo",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPTC25036",
+      "name": "Vườn Tươi Tốt",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM22064",
+      "name": "EPM22064",
+      "variants": 4,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM22016",
+      "name": "ESM22016",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM22014",
+      "name": "ESM22014",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM22062",
+      "name": "EPM22062",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESP007",
+      "name": "ESP007",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 5,
+      "notes": []
+    },
+    {
+      "sku": "EPC22056",
+      "name": "EPC22056",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC22045",
+      "name": "EPC22045",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC22042",
+      "name": "EPC22042",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM22019",
+      "name": "ESM22019",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM22013",
+      "name": "ESM22013",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM24013",
+      "name": "Âm Thanh Đồng Hoa",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "MB2301MT",
+      "name": "Mint",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "ICEDREAM",
+      "name": "Bộ ga làm mát Ice Dream",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "EPT24084",
+      "name": "Diên Vĩ Tỏa Sắc",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT24083",
+      "name": "Hương Hoàng Lan",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT24082",
+      "name": "Hoa Bình Minh",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24069",
+      "name": "Lá Ướt Sương",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESMS24011",
+      "name": "Mẫu Đơn Kintsugi",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTR23054",
+      "name": "Honey Yellow",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTR23055",
+      "name": "Sky Blue",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST23036",
+      "name": "Hoa Đá",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST23035",
+      "name": "Sắc Đông",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTR23056",
+      "name": "Sapphire Blue",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST23034",
+      "name": "Sắc Mai",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST23032",
+      "name": "Rừng Hoa",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST23031",
+      "name": "Ankara 2.0",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM23067",
+      "name": "Hoa Ban Trắng",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB23022",
+      "name": "Hoa Mộc Lan",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM23066",
+      "name": "Coventry",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB23021",
+      "name": "Ocean Blue",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM23065",
+      "name": "Stone Grey",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM23064",
+      "name": "Soho",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM23013",
+      "name": "Sắc Thu",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM23012",
+      "name": "Creamy White",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM23062",
+      "name": "Monstera",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM23011",
+      "name": "Pearl White",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM23061",
+      "name": "Cherry Red",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC23050",
+      "name": "Hoa Mẫu Đơn",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC23047",
+      "name": "Hoa Đồng Nội",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESC23002",
+      "name": "Sắc Hạ",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC23046",
+      "name": "Sắc Hồng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC23045",
+      "name": "Hoa Hẹn Ước",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESC23001",
+      "name": "Uyên Ương",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC23044",
+      "name": "Cairo",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTJ24032",
+      "name": "Giấc Mơ Hoa",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC23043",
+      "name": "Hương Hoa",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24067",
+      "name": "Đường Cân Bằng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24068",
+      "name": "Bình Minh Hồng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPT24081",
+      "name": "Dòng Thời Gian",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESJ24030",
+      "name": "Giấc Mơ Mây",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24062",
+      "name": "Dải Sáng Trắng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24061",
+      "name": "Nét Yên Bình",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM24016",
+      "name": "Vũ Điệu Xuân",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24060",
+      "name": "Sắc Nhã Nhặn",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM24015",
+      "name": "Hoa Ngọt Ngào",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST24036",
+      "name": "Đêm Tinh Tú",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM24014",
+      "name": "Chân Trời Xanh",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST24035",
+      "name": "Cánh Đồng Nắng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24065",
+      "name": "Dải Mộng Mơ",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24064",
+      "name": "Xuân Thì",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST24034",
+      "name": "Hoa Cúc Rực Rỡ",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESMS24012",
+      "name": "Khúc Hát Cúc Chi Trắng",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST24033",
+      "name": "Miền Sa Mạc",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM24063",
+      "name": "Trà My Khoe Hương",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25010",
+      "name": "Nét Hứng Khởi",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 7,
+      "notes": []
+    },
+    {
+      "sku": "EPM25012",
+      "name": "Giao Lộ Hy Vọng",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 7,
+      "notes": []
+    },
+    {
+      "sku": "EPM25009",
+      "name": "Vũ Điệu Hoa",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM25013",
+      "name": "Con Đường Mới",
+      "variants": 4,
+      "price_table_status": "full",
+      "variation_calls": 4,
+      "notes": []
+    },
+    {
+      "sku": "EPBC25014",
+      "name": "Nét Đương Thời",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 6,
+      "notes": []
+    },
+    {
+      "sku": "EPT25015",
+      "name": "Ánh Dương Lấp Lánh",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 6,
+      "notes": []
+    },
+    {
+      "sku": "EPM25016",
+      "name": "Tiếng Vỗ Về",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 5,
+      "notes": []
+    },
+    {
+      "sku": "MDSM2203",
+      "name": "Lily",
+      "variants": 2,
+      "price_table_status": "partial",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "MDSM2201B",
+      "name": "Cúc họa mi",
+      "variants": 2,
+      "price_table_status": "partial",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "ESM22012",
+      "name": "ESM22012",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 0,
+      "notes": []
+    },
+    {
+      "sku": "EPC22047",
+      "name": "EPC22047",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPC22046",
+      "name": "EPC22046",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM22066",
+      "name": "EPM22066",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "ESC22017",
+      "name": "ESC22017",
+      "variants": 2,
+      "price_table_status": "partial",
+      "variation_calls": 1,
+      "notes": []
+    },
+    {
+      "sku": "EPM22063",
+      "name": "EPM22063",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST22026",
+      "name": "EST22026",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 1,
+      "notes": []
+    },
+    {
+      "sku": "EPM22061",
+      "name": "EPM22061",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 7,
+      "notes": []
+    },
+    {
+      "sku": "EPM22075",
+      "name": "EPM22075",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 7,
+      "notes": []
+    },
+    {
+      "sku": "ESB22054",
+      "name": "ESB22054",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB22052",
+      "name": "ESB22052",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST22030",
+      "name": "EST22030",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESM22015",
+      "name": "ESM22015",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST22027",
+      "name": "EST22027",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 5,
+      "notes": []
+    },
+    {
+      "sku": "ESM22005",
+      "name": "ESM22005",
+      "variants": 2,
+      "price_table_status": "partial",
+      "variation_calls": 1,
+      "notes": []
+    },
+    {
+      "sku": "ESM22004",
+      "name": "ESM22004",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 5,
+      "notes": []
+    },
+    {
+      "sku": "ESC22003",
+      "name": "ESC22003",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "OLE25003",
+      "name": "Vivid Sky Blue",
+      "variants": 2,
+      "price_table_status": "partial",
+      "variation_calls": 4,
+      "notes": []
+    },
+    {
+      "sku": "OLE25002",
+      "name": "Mustard Yellow",
+      "variants": 5,
+      "price_table_status": "full",
+      "variation_calls": 5,
+      "notes": []
+    },
+    {
+      "sku": "OLE25001",
+      "name": "Light Pink",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 3,
+      "notes": []
+    },
+    {
+      "sku": "ESLP002",
+      "name": "ESLP002",
+      "variants": 6,
+      "price_table_status": "full",
+      "variation_calls": 5,
+      "notes": []
+    },
+    {
+      "sku": "EPM22065",
+      "name": "EPM22065",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EPM22060",
+      "name": "EPM22060",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB22053",
+      "name": "ESB22053",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESB22051",
+      "name": "ESB22051",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST22032",
+      "name": "EST22032",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "EST22031",
+      "name": "EST22031",
+      "variants": 7,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "MB2304GR",
+      "name": "Grey",
+      "variants": 1,
+      "price_table_status": "default_only",
+      "variation_calls": 3,
+      "notes": []
+    },
+    {
+      "sku": "MB2302BL",
+      "name": "Blue",
+      "variants": 3,
+      "price_table_status": "partial",
+      "variation_calls": 2,
+      "notes": []
+    },
+    {
+      "sku": "EST23037",
+      "name": "Sắc Xuân",
+      "variants": 8,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    },
+    {
+      "sku": "ESTR23051",
+      "name": "Black Pink",
+      "variants": 9,
+      "price_table_status": "full",
+      "variation_calls": 8,
+      "notes": []
+    }
+  ]
+}
