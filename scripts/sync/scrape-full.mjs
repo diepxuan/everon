@@ -24,8 +24,8 @@
 //  - Không tải ảnh về (chỉ lưu source_url). Không commit/push. Chỉ ghi vào
 //    thư mục làm việc này.
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url', '..';
+import { dirname, resolve } from 'node;
+import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const BASE = 'https://everon.com';
