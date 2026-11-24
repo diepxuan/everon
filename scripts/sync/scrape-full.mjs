@@ -20,6 +20,14 @@
 // duy trì). URL không đổi được giữ lại từ data/products.json, không
 // cào lại. Chủ nhật quét toàn bộ để bắt mọi thay đổi mà lastmod bỏ sót.
 //
+// LIET KE BIEN THE LE + TON KHO TUNG BIEN THE (sua 23/11/2026):
+// - Ban cu chi liet ke (Bo/Ga) x (size giuong) nen bo sot bien the le nhu
+//   'Vo goi om 80x100' (EPM22064, SKU EVG80100EPM22064). Ban moi liet ke them
+//   loai Vo goi / Vo chan / Chan va size nho (45x65, 80x100...), ngan sach
+//   goi variation 8 -> 20 (xem buildVariants).
+// - Moi bien the ghi them truong stock (so luong ton rieng bien the do,
+//   null neu khong ro). Trang chi tiet chua hien thi ton tung bien the —
+//   cho anh quyet cach hien thi (xem README goi PR).
 // NGUYÊN TẮC (theo phương án + quyết định đã chốt 22/11/2026):
 //  - Nguồn: everon.com, đã được Everpia đồng ý dùng toàn bộ catalog.
 //  - Discovery: sitemap.xml (lưu ý: server trả HTTP 404 nhưng body vẫn là XML
@@ -281,6 +289,54 @@ const vDiscount = (d, price, compareAt) => {
   return 0;
 };
 
+// ---------- Phan loai size / loai bo (sua 23/11/2026) ----------
+// NGUYEN NHAN BO SOT (kiem chung live 23/11/2026, EPM22064 + EPT25029):
+// ban cu chi liet ke (loai bo bat dau "Bo"/"Ga") x (size giuong
+// 160x200/180x200/200x220). Bien the le nhu "Vo goi om 80x100" (EPM22064,
+// SKU EVG80100EPM22064, 176.000d) nam ngoai ca hai bo loc nen khong bao
+// gio duoc goi — du endpoint /product-variation tra dung bien the do khi
+// goi [mau, id-loai, id-size]. To hop sai server tra ve bien the mac dinh
+// va tryCombo da loai dung, nen mo rong liet ke la an toan.
+const sizeDim = (txt) => {
+  const m = String(txt || '').match(/(\d+)\s*x\s*(\d+)/);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+};
+// Size giuong: ca hai chieu >= 120 (160x200, 180x200, 200x220, 120x200,
+// 140x200, 180x220...). Size nho (vo goi...): cac size con lai.
+const isBedSize = (txt) => {
+  const d = sizeDim(txt);
+  return !!d && Math.min(d[0], d[1]) >= 120;
+};
+// Thu tu uu tien size giuong: 3 co chuan 160x200/180x200/200x220 truoc,
+// roi cac co giuong khac (120x200, 140x200, 180x220...) theo thu tu trang.
+// (Neu lay theo thu tu trang, buoc 1 se thu 120x200/140x200 truoc va het
+// luot truoc khi toi 180x200/200x220 — da gay mat bien the o test 23/11.)
+const BED_SIZE_ORDER = ['160x200', '180x200', '200x220'];
+const bedSizeRank = (txt) => {
+  const i = BED_SIZE_ORDER.indexOf(String(txt));
+  return i >= 0 ? i : BED_SIZE_ORDER.length;
+};
+// Thu tu uu tien size nho cho loai vo goi: 45x65 (goi nam) va 50x70 la
+// 2 co pho bien nhat, roi 80x100 (goi om), roi cac co con lai theo thu tu
+// tren trang. Size khong co trong danh sach giu nguyen thu tu trang.
+const SMALL_SIZE_ORDER = ['45x65', '50x70', '80x100', '35x50', '45x45', '60x80'];
+const smallSizeRank = (txt) => {
+  const i = SMALL_SIZE_ORDER.indexOf(String(txt));
+  return i >= 0 ? i : SMALL_SIZE_ORDER.length;
+};
+const isBedSet = (txt) => /^(Bộ|Ga|Vỏ chăn|Chăn)/.test(String(txt || ''));
+const isPillowSet = (txt) => /^Vỏ gối/.test(String(txt || ''));
+// Ton kho tung bien the: endpoint tra ve stock = so luong ton cua rieng
+// bien the do (vd 103, 84, 6, 2, 0). Goi khong tham so tra ve stock TONG
+// cua ca san pham (vd EPT25029: 103) — KHONG dung lam ton bien the mac
+// dinh; ton that cua bien the mac dinh lay tu 1 lan goi ro to hop (buoc 0
+// trong buildVariants). Het / khong ro -> null.
+const vStock = (vd) => {
+  if (!vd || vd.stock === null || vd.stock === undefined) return null;
+  const n = Number(vd.stock);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
+};
+
 async function buildVariants(base, defVar) {
   // defVar: ket qua variation khong tham so (bien the mac dinh that su cua trang).
   const d = defVar?.data ?? null;
@@ -321,17 +377,39 @@ async function buildVariants(base, defVar) {
       compare_at_price: { amount: compareAt ?? price, currency: 'VND' },
       discount_percent: vDiscount(vd, price, compareAt),
       status: 'active',
+      stock: vStock(vd),
     });
     return true;
   };
-  // Bien the mac dinh (tu variation khong tham so).
-  if (d && defPrice) pushVariant(defSetId, defSizeId, d);
-  const coverage = { calls: 0, valid_extra: 0, budget: 8, status: 'default_only', notes: [] };
+  // Bien the mac dinh (tu variation khong tham so). Ton tam de null: goi
+  // khong tham so tra ve stock TONG san pham, khong phai ton rieng bien the
+  // — ton that lay o buoc 0 duoi day; neu buoc 0 that bai thi giu null
+  // (khong ro) thay vi ghi nham tong.
+  if (d && defPrice) {
+    pushVariant(defSetId, defSizeId, d);
+    if (variants[0]) variants[0].stock = null;
+  }
+  // Ngan sach goi variation: 8 -> 20. Chi phi: moi lan goi ~1,5s nghi +
+  // request; full scan 189 san pham them toi da ~60 phut (100 -> ~160 phut,
+  // van duoi timeout 240 phut cua workflow); sync tang dan chi cao lai san
+  // pham doi theo lastmod nen gan nhu khong them chi phi hang ngay. Can
+  // them bien the le (vo goi, chan...) vi to hop (loai x size) nhieu gap
+  // doi ban cu, va can 1 lan goi rieng lay ton that bien the mac dinh.
+  const coverage = { calls: 0, valid_extra: 0, budget: 20, status: 'default_only', notes: [] };
   if (!base.variationId || !colorId || !setGroup || !sizeGroup) {
     coverage.notes.push('thieu variation id / nhom thuoc tinh — chi co gia mac dinh');
     return { variants, coverage, defSel, colorId, defSetId, defSizeId };
   }
+  if (sizeGroup.options.length === 0) {
+    coverage.notes.push('nhom kich thuoc khong co lua chon nao — chi co gia mac dinh');
+    coverage.status = variants.length > 1 ? 'partial' : 'default_only';
+    return { variants, coverage, defSel, colorId, defSetId, defSizeId };
+  }
+  const tried = new Set();
   const tryCombo = async (setId, sizeId) => {
+    const tkey = `${setId}|${sizeId}`;
+    if (tried.has(tkey)) return null; // da thu roi — khong goi lai, khong ton ngan sach
+    tried.add(tkey);
     if (coverage.calls >= coverage.budget) return null;
     await sleep(DELAY_MS);
     coverage.calls += 1;
@@ -353,46 +431,100 @@ async function buildVariants(base, defVar) {
       return null;
     }
   };
-  const bedSizes = sizeGroup.options.filter((o) => ['160x200', '180x200', '200x220'].includes(o.txt));
-  const bedSizeIds = bedSizes.map((o) => o.id);
-  // Toi uu: san pham khong co size giuong (vo goi, phu kien le...) thi bang gia
-  // theo size khong ton tai — bo qua cac lan goi variation, chi giu gia mac dinh.
-  if (bedSizes.length === 0) {
-    coverage.notes.push('khong co size giuong 160x200/180x200/200x220 — chi co gia mac dinh');
-    coverage.status = variants.length > 1 ? 'partial' : 'default_only';
-    return { variants, coverage, defSel, colorId, defSetId, defSizeId };
+  // 0) Ton THAT cua bien the mac dinh: goi ro to hop mac dinh. Server tra ve
+  // ban ghi bien the con (SKU rieng, stock rieng); chi lay stock, khong doi
+  // SKU (SKU mac dinh van la ma goc san pham). Neu server tra ve dung ban ghi
+  // goc (cung SKU) thi khong lay stock (tranh ghi nham stock tong).
+  if (d && defPrice && defSetId && defSizeId && variants[0]) {
+    const dd = await tryCombo(defSetId, defSizeId);
+    if (dd && dd.sku && String(dd.sku).trim() !== String(defSku)
+      && Number.isFinite(Number(dd.stock))) {
+      variants[0].stock = Math.trunc(Number(dd.stock));
+    }
   }
-  // 1) Bo mac dinh: them 2 size con lai.
+  const bedSizeIds = sizeGroup.options.filter((o) => isBedSize(o.txt))
+    .sort((a, b) => bedSizeRank(a.txt) - bedSizeRank(b.txt)).map((o) => o.id);
+  const smallSizeIds = sizeGroup.options.filter((o) => !isBedSize(o.txt))
+    .sort((a, b) => smallSizeRank(a.txt) - smallSizeRank(b.txt)).map((o) => o.id);
+  const defSetTxt = labelOf(setGroup, defSetId);
+  // Size cung ho voi bo mac dinh: bo giuong -> size giuong, vo goi -> size nho.
+  const defFamilySizes = isPillowSet(defSetTxt) ? smallSizeIds : bedSizeIds;
+  const boGaSets = setGroup.options.filter((o) => o.id !== defSetId && /^(Bộ|Ga)/.test(o.txt));
+  const blanketSets = setGroup.options.filter((o) => o.id !== defSetId && /^(Vỏ chăn|Chăn)/.test(o.txt));
+  const pillowSets = setGroup.options.filter((o) => o.id !== defSetId && isPillowSet(o.txt));
+  const otherSets = setGroup.options.filter((o) => o.id !== defSetId
+    && !/^(Bộ|Ga)/.test(o.txt) && !/^(Vỏ chăn|Chăn)/.test(o.txt) && !isPillowSet(o.txt));
+  // 1) Bo mac dinh: cac size con lai cung ho (toi da 2).
   if (defSetId && defSizeId) {
-    for (const sz of bedSizeIds.filter((id) => id !== defSizeId)) await tryCombo(defSetId, sz);
+    for (const sz of defFamilySizes.filter((id) => id !== defSizeId).slice(0, 2)) {
+      await tryCombo(defSetId, sz);
+      if (coverage.calls >= coverage.budget) break;
+    }
   }
-  // 2) Cac kieu bo "Bo ..." khac: 1 lan goi o size mac dinh.
-  const otherBoSets = setGroup.options.filter((o) => o.id !== defSetId && /^Bộ/.test(o.txt));
-  const validBoSets = [];
-  for (const st of otherBoSets.slice(0, 5)) {
+  // 2) Cac loai Bo/Ga khac: 1 lan goi o size mac dinh (toi da 7 — giu nhu
+  // ban cu: Bo toi da 5 + Ga toi da 3, gom chung 1 cap).
+  const validSets = [];
+  for (const st of boGaSets.slice(0, 7)) {
     const dd = defSizeId ? await tryCombo(st.id, defSizeId) : null;
-    if (dd) validBoSets.push(st.id);
+    if (dd) validSets.push(st.id);
     if (coverage.calls >= coverage.budget) break;
   }
-  // 3) Neu con ngan sach: them size cho cac bo vua thay hop le.
-  for (const setId of validBoSets) {
+  // 3) Them size giuong cho cac bo vua thay hop le (toi da 3 lan goi — ngan
+  // sach uu tien cho buoc 5 tim bien the le; ban cu cung chi mo rong duoc
+  // 1-2 bo trong ngan sach 8).
+  let p3calls = 0;
+  for (const setId of validSets) {
+    if (p3calls >= 3) break;
     for (const sz of bedSizeIds.filter((id) => id !== defSizeId)) {
+      if (p3calls >= 3 || coverage.calls >= coverage.budget) break;
+      await tryCombo(setId, sz);
+      p3calls += 1;
+    }
+  }
+  // 4) Cac loai Vo chan / Chan khac: 1 lan goi o size mac dinh (toi da 2).
+  for (const st of blanketSets.slice(0, 2)) {
+    const dd = defSizeId ? await tryCombo(st.id, defSizeId) : null;
+    if (dd) validSets.push(st.id);
+    if (coverage.calls >= coverage.budget) break;
+  }
+  // 5) Cac loai Vo goi: thu tung loai voi size nho theo thu tu uu tien
+  // (45x65, 50x70, 80x100...), dung sau bien the dau tien hop le cua loai
+  // do (cac size con lai de buoc 6). Day la buoc bat bien the le nhu
+  // "Vo goi om 80x100" — to hop (loai vo goi x size mac dinh giuong) luon
+  // tra ve bien the mac dinh nen phai thu voi size nho.
+  for (const st of pillowSets) {
+    let found = false;
+    for (const sz of smallSizeIds.slice(0, 4)) {
+      if (coverage.calls >= coverage.budget) break;
+      const dd = await tryCombo(st.id, sz);
+      if (dd) { found = true; validSets.push(st.id); break; }
+    }
+    if (found) coverage.notes.push(`vo goi ${labelOf(setGroup, st.id)}: tim thay o size nho`);
+    if (coverage.calls >= coverage.budget) break;
+  }
+  // 6) Vet: cac loai con lai chua thu (loai la), cac size nho con lai cua
+  // cac loai vo goi da hop le, va cac loai giuong chua thu — cho den khi
+  // het ngan sach.
+  for (const st of otherSets) {
+    if (coverage.calls >= coverage.budget) break;
+    const dd = defSizeId ? await tryCombo(st.id, defSizeId) : null;
+    if (!dd && smallSizeIds.length) await tryCombo(st.id, smallSizeIds[0]);
+  }
+  for (const setId of validSets) {
+    if (!isPillowSet(labelOf(setGroup, setId))) continue;
+    for (const sz of smallSizeIds) {
       if (coverage.calls >= coverage.budget) break;
       await tryCombo(setId, sz);
     }
     if (coverage.calls >= coverage.budget) break;
   }
-  // 4) Neu con ngan sach: cac loai Ga don o size mac dinh.
-  if (coverage.calls < coverage.budget && defSizeId) {
-    for (const st of setGroup.options.filter((o) => o.id !== defSetId && /^Ga/.test(o.txt)).slice(0, 3)) {
-      await tryCombo(st.id, defSizeId);
-      if (coverage.calls >= coverage.budget) break;
-    }
+  for (const st of [...boGaSets.slice(7), ...blanketSets.slice(2)]) {
+    if (coverage.calls >= coverage.budget) break;
+    if (defSizeId) await tryCombo(st.id, defSizeId);
   }
   coverage.status = variants.length >= 4 ? 'full' : variants.length > 1 ? 'partial' : 'default_only';
   return { variants, coverage, defSel, colorId, defSetId, defSizeId };
 }
-
 // ---------- Main ----------
 async function main() {
   mkdirSync(`${ROOT}/data`, { recursive: true });
@@ -521,7 +653,7 @@ async function main() {
           sku: `${sku}-160`, size: '160x200', set_type: 'Bộ ga chun chần',
           price: { amount: price, currency: 'VND' },
           compare_at_price: { amount: compareAt ?? price, currency: 'VND' },
-          discount_percent: discount ?? 0, status: 'active',
+          discount_percent: discount ?? 0, status: 'active', stock: null,
         });
         coverage.status = 'default_only';
         coverage.notes.push('variation khong tra ve bien the — dung gia mac dinh tu trang');
