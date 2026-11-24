@@ -8,12 +8,13 @@ KHÔNG tự merge.
 
 | Bước | Script | Làm gì |
 | --- | --- | --- |
-| 1. Scrape | `scrape-full.mjs` | Cập nhật dữ liệu từ everon.com (sitemap + product-variation) → `data/products-bo-chan-ga.full.json` (bản wrapper) |
-| 2. Xuất dữ liệu site | `export-site-data.mjs` | Xuất mảng trần `data/products.json` + cập nhật `data/sync-state.json` |
+| 1. Scrape | `scrape-full.mjs` | Tăng dần thật sự theo sitemap lastmod: chỉ cào lại URL mới/đổi, giữ lại phần còn lại từ `data/products.json`. `--full` (Chủ nhật / chạy tay) thì cào toàn bộ. Ghi bản wrapper ra `data/products-bo-chan-ga.full.json` (chỉ dùng trong lần chạy) |
+| 2. Xuất dữ liệu site | `export-site-data.mjs` | Xuất mảng trần `data/products.json` + cập nhật `data/sync-state.json` (gộp lastmod mới từ discovery) |
 | 3. Ảnh | `images.mjs` | Tải ảnh mới/thay đổi về `assets/img/products/<sku>/*.webp`, ghi `data/image-manifest.json` |
 | 4. Validate + safety gate | `validate.mjs` | Kiểm tra schema, đối chiếu manifest, chặn nếu mất >10% catalog hoặc giá = 0 |
-| 5. Diff | `diff.mjs` | Tóm tắt thay đổi (giá, trạng thái, biến thể, ảnh gốc) → `data/sync-diff.json` |
-| 6. Mở PR | `peter-evans/create-pull-request@v6` | Chỉ mở PR khi có thay đổi thật |
+| 5. Diff | `diff.mjs` | Tóm tắt thay đổi (giá, trạng thái, biến thể, ảnh gốc) → `data/sync-diff.json` (chỉ dùng để soạn mô tả PR, không commit) |
+| 6. Dọn file trung gian | (bước trong workflow) | Xóa `products-bo-chan-ga.full.json(.jsonl)`, `state.json`, `run-stats.json`, `discovery.json`, `sync-diff.json` trước khi tạo PR |
+| 7. Mở PR | `peter-evans/create-pull-request@v6` | Chỉ mở PR khi có thay đổi thật. PR chỉ gồm `products.json`, `sync-state.json`, `image-manifest.json` và ảnh |
 
 ## Ảnh tự lưu
 
@@ -57,9 +58,22 @@ node scripts/sync/diff.mjs data/products.json data/test-products.json
 
 ## File dữ liệu liên quan
 
-- `data/products.json` — mảng trần 189 sản phẩm, giao diện đọc file này.
-- `data/image-manifest.json` — manifest ảnh (tự sinh, commit cùng PR).
-- `data/sync-state.json` — trạng thái đồng bộ (tổng số, url_lastmod).
-- `data/sync-diff.json` — diff lần chạy gần nhất (tự sinh).
-- `data/discovery.json`, `data/state.json` — file làm việc của scrape
-  (resume + đối chiếu lastmod), commit cùng để lần sau chạy tiếp được.
+Giữ lại trên repo (cần cho lần chạy sau hoặc giao diện đọc):
+
+- `data/products.json` — mảng trần 189 sản phẩm, giao diện đọc file này; đồng thời là nguồn giữ lại sản phẩm không đổi trong lần chạy tăng dần.
+- `data/image-manifest.json` — manifest ảnh (tự sinh, commit cùng PR). Thiếu file này thì lần sau phải tải lại toàn bộ ~400 ảnh.
+- `data/sync-state.json` — trạng thái đồng bộ (tổng số, `url_lastmod` cho 755 URL sitemap). Đây là khóa của cơ chế tăng dần: scraper so lastmod mới với lastmod đã lưu ở đây.
+
+Chỉ dùng trong lần chạy, KHÔNG commit (workflow xóa trước bước tạo PR):
+
+- `data/products-bo-chan-ga.full.json` — bản wrapper do scraper ghi, `export-site-data.mjs` đọc để xuất `products.json`.
+- `data/products-bo-chan-ga.full.jsonl` — checkpoint từng dòng (phục vụ `--resume` khi chạy tay).
+- `data/state.json` — checkpoint của scraper (`{updated_at, count, products}`); nội dung `products` trùng y hệt bản wrapper nên là bản sao thừa, chỉ phục vụ `--resume` khi chạy tay.
+- `data/discovery.json` — kết quả discovery lần này (URL + `lastmod_by_url`); `export-site-data.mjs` đã gộp lastmod vào `sync-state.json` trước khi xóa.
+- `data/run-stats.json` — báo cáo lần chạy (không script nào đọc lại).
+- `data/sync-diff.json` — diff lần chạy này, chỉ dùng để soạn mô tả PR.
+
+## Tăng dần theo lastmod (sửa 23/11/2026)
+
+- Sitemap của everon.com CÓ `<lastmod>` cho mọi URL (đã kiểm chứng trực tiếp ngày 23/11/2026: 1543/1543 URL có lastmod), nhưng regex cũ trong `discover()` chỉ bắt `<lastmod>` khi nó đứng ngay sau `</loc>`, trong khi thứ tự thật là `<loc> → <priority> → <lastmod>`. Hậu quả: `lastmod_by_url` lưu toàn `null`, và code cũ cũng không hề so sánh lastmod — chế độ `--resume` chỉ nạp lại `state.json` rồi bỏ qua mọi URL đã có, nên lần chạy ngày thường thực chất viết lại dữ liệu cũ (giá mới không bao giờ được cập nhật; giá giảm 15% trong PR #8 chỉ xuất hiện vì lần đó chạy full do chưa có `discovery.json` trên main). Đã sửa regex (đọc theo từng khối `<url>`) và triển khai so sánh thật: URL mới, URL thiếu tín hiệu lastmod ở một trong hai bên, hoặc URL đổi lastmod thì cào lại; còn lại giữ nguyên từ `products.json`.
+- Lần chạy đầu tiên sau PR dọn dẹp này sẽ cào lại toàn bộ 189 sản phẩm (vì lastmod đang lưu trên main đều `null`); từ lần sau trở đi mới tăng dần thật sự. Chủ nhật vẫn quét toàn bộ (`--full`) để bắt mọi thay đổi mà lastmod bỏ sót (vd: everon.com đổi giá mà không cập nhật lastmod).
