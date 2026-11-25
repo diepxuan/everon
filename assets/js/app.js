@@ -298,8 +298,6 @@
       }).join("\n");
       catGrid.innerHTML = cats;
     }
-    var stat = document.getElementById("stat-products");
-    if (stat) stat.textContent = data.products.length;
   }
 
   /* ---------- trang danh mục ---------- */
