@@ -24,7 +24,8 @@
 // - Ban cu chi liet ke (Bo/Ga) x (size giuong) nen bo sot bien the le nhu
 //   'Vo goi om 80x100' (EPM22064, SKU EVG80100EPM22064). Ban moi liet ke them
 //   loai Vo goi / Vo chan / Chan va size nho (45x65, 80x100...), ngan sach
-//   goi variation 8 -> 20 (xem buildVariants).
+//   goi variation 8 -> 20 -> 26 (xem buildVariants; 26 tu PR #18: buoc 2
+//   thu het loai Bo/Ga + vong vet combo buoc 6a can them luot goi).
 // - Moi bien the ghi them truong stock (so luong ton rieng bien the do,
 //   null neu khong ro). Trang chi tiet chua hien thi ton tung bien the —
 //   cho anh quyet cach hien thi (xem README goi PR).
@@ -389,13 +390,14 @@ async function buildVariants(base, defVar) {
     pushVariant(defSetId, defSizeId, d);
     if (variants[0]) variants[0].stock = null;
   }
-  // Ngan sach goi variation: 8 -> 20. Chi phi: moi lan goi ~1,5s nghi +
-  // request; full scan 189 san pham them toi da ~60 phut (100 -> ~160 phut,
-  // van duoi timeout 240 phut cua workflow); sync tang dan chi cao lai san
-  // pham doi theo lastmod nen gan nhu khong them chi phi hang ngay. Can
-  // them bien the le (vo goi, chan...) vi to hop (loai x size) nhieu gap
-  // doi ban cu, va can 1 lan goi rieng lay ton that bien the mac dinh.
-  const coverage = { calls: 0, valid_extra: 0, budget: 20, status: 'default_only', notes: [] };
+  // Ngan sach goi variation: 8 -> 20 -> 26 (26 tu PR #18: buoc 2 thu het
+  // loai Bo/Ga nen can them luot goi, cong 2 luot cho vong vet combo o
+  // buoc 6a; full scan toi da them ~30 phut so voi muc 20, ~190 phut,
+  // van duoi timeout 240 phut cua workflow); sync tang dan chi cao lai
+  // san pham doi theo lastmod nen gan nhu khong them chi phi hang ngay.
+  // Can them bien the le (vo goi, chan...) vi to hop (loai x size) nhieu
+  // gap doi ban cu, va can 1 lan goi rieng lay ton that bien the mac dinh.
+  const coverage = { calls: 0, valid_extra: 0, budget: 26, status: 'default_only', notes: [] };
   if (!base.variationId || !colorId || !setGroup || !sizeGroup) {
     coverage.notes.push('thieu variation id / nhom thuoc tinh — chi co gia mac dinh');
     return { variants, coverage, defSel, colorId, defSetId, defSizeId };
@@ -461,10 +463,12 @@ async function buildVariants(base, defVar) {
       if (coverage.calls >= coverage.budget) break;
     }
   }
-  // 2) Cac loai Bo/Ga khac: 1 lan goi o size mac dinh (toi da 7 — giu nhu
-  // ban cu: Bo toi da 5 + Ga toi da 3, gom chung 1 cap).
+  // 2) Cac loai Bo/Ga khac: 1 lan goi o size mac dinh (THU HET, khong
+  // slice(0, 7) — sua PR #18: 2 loai combo "+ Vo goi om" (id 110, 111)
+  // nam cuoi danh sach Bo/Ga nen slice(0, 7) bo sot chung, dan toi mat
+  // 72 bien the tren PR #17).
   const validSets = [];
-  for (const st of boGaSets.slice(0, 7)) {
+  for (const st of boGaSets) {
     const dd = defSizeId ? await tryCombo(st.id, defSizeId) : null;
     if (dd) validSets.push(st.id);
     if (coverage.calls >= coverage.budget) break;
@@ -505,6 +509,29 @@ async function buildVariants(base, defVar) {
   // 6) Vet: cac loai con lai chua thu (loai la), cac size nho con lai cua
   // cac loai vo goi da hop le, va cac loai giuong chua thu — cho den khi
   // het ngan sach.
+  // 6a) Vet them size giuong cho cac loai combo "+ Vo goi om" da hop le
+  // (them PR #18): combo chi duoc thu o size mac dinh o buoc 2; neu san
+  // pham mac dinh 180x200 (VD EPT24084) thi combo 160x200 van ban nhung
+  // khong bao gio duoc goi — endpoint tra dung SKU/gia rieng cho to hop
+  // nay (kiem chung 25/11/2026). Thu size giuong con lai cho combo truoc
+  // khi vet vo goi, vi combo la bien the gia tri cao hon. Chi thu 3 co
+  // chuan 160x200/180x200/200x220 (khong thu co le nhu 180x220, 120x190).
+  // Duyet theo SIZE truoc (160x200 truoc, roi 200x220): voi ngan sach chi
+  // con 2-3 luot, ca 2 loai combo deu duoc thu o co pho bien nhat thay vi
+  // 1 loai chiem het luot o moi co. Chi them bien the, khong bao gio lam
+  // mat bien the da co (tryCombo co tried-set).
+  const comboSets = validSets.filter((id) => {
+    const t = labelOf(setGroup, id);
+    return t && t.includes('+');
+  });
+  const stdSizes = bedSizeIds.filter((id) => id !== defSizeId && BED_SIZE_ORDER.includes(labelOf(sizeGroup, id)));
+  for (const sz of stdSizes) {
+    for (const setId of comboSets) {
+      if (coverage.calls >= coverage.budget) break;
+      await tryCombo(setId, sz);
+    }
+    if (coverage.calls >= coverage.budget) break;
+  }
   for (const st of otherSets) {
     if (coverage.calls >= coverage.budget) break;
     const dd = defSizeId ? await tryCombo(st.id, defSizeId) : null;
