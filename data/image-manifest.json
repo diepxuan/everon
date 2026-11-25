@@ -1,16 +1,16 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-24T07:34:14.568Z",
+  "generated_at": "2026-11-25T09:53:40.689Z",
   "summary": {
     "total": 1182,
-    "downloaded": 782,
-    "skipped": 400,
-    "converted": 782,
+    "downloaded": 0,
+    "skipped": 1182,
+    "converted": 0,
     "fallback_original": 0,
     "failed": 0,
     "pruned": 0,
-    "bytes_total": 17985644,
-    "duration_ms": 62389,
+    "bytes_total": 0,
+    "duration_ms": 40,
     "failures": [],
     "warnings": []
   },
