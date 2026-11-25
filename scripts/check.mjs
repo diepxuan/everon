@@ -85,6 +85,11 @@ check("scraper: lấy toàn bộ ảnh, không giới hạn 3 ảnh", scraper.in
    thứ tự thẻ, so sánh với lastmod đã lưu trong sync-state.json, --full
    chỉ dùng cho quét toàn bộ. */
 check("scraper: tăng dần theo lastmod (so sánh sync-state.json)", scraper.includes("sync-state.json") && scraper.includes("isChanged") && scraper.includes("--full"));
+/* Sửa 25/11/2026 (PR #18): 2 loại combo "+ Vỏ gối ôm" nằm cuối danh sách
+   Bộ/Ga nên bước 2 phải thử hết boGaSets (không slice(0, 7)); ngân sách
+   26 và vòng vét combo bước 6a để combo có đủ size chuẩn. */
+check("scraper: thử hết loại Bộ/Ga, không slice(0, 7); ngân sách 26; có vòng vét combo",
+  !scraper.includes("boGaSets.slice(0, 7)") && scraper.includes("for (const st of boGaSets)") && scraper.includes("budget: 26") && scraper.includes("comboSets"));
 
 /* ---------- 2. DOM shim + chạy thử app.js ---------- */
 const ENTITY_MAP = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
