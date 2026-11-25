@@ -164,10 +164,26 @@ main { padding: 8px 0 40px; }
   display: flex;
   flex-direction: column;
 }
-.card > a { display: block; text-decoration: none; color: inherit; }
+.card > a {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  /* Khung ảnh vuông ép bằng padding-top (tỉ lệ theo chiều rộng) thay vì
+     chỉ trông chờ aspect-ratio: trình duyệt cũ / WebView cũ trong app
+     Zalo, Facebook không hiểu aspect-ratio sẽ để ảnh cao theo tỉ lệ gốc
+     (ảnh Everon 540x600, dọc). padding-top: 100% cho khung vuông ở mọi
+     trình duyệt; aspect-ratio giữ lại cho trình duyệt mới. */
+  position: relative;
+  aspect-ratio: 1 / 1;
+  padding-top: 100%;
+  overflow: hidden;
+}
 .card img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   display: block;
   background: #eee;
@@ -222,7 +238,8 @@ main { padding: 8px 0 40px; }
   border: 1px solid #cfc9bd;
   border-radius: 8px;
   font: inherit;
-  font-size: 15px;
+  /* 16px để iOS Safari không tự zoom khi chạm vào ô tìm kiếm / chọn lọc. */
+  font-size: 16px;
   background: #fff;
   color: var(--ink);
 }
@@ -242,8 +259,17 @@ main { padding: 8px 0 40px; }
 /* ---------- Product detail ---------- */
 .detail { display: grid; grid-template-columns: 1fr; gap: 22px; margin-top: 18px; }
 .gallery { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
-.main-wrap { position: relative; }
-.main-btn { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+.main-wrap {
+  position: relative;
+  /* Khung ảnh chính vuông ép bằng padding-top: 100% (xem ghi chú ở
+     .card > a): ảnh chính trang chi tiết trước đây chỉ có aspect-ratio
+     nên WebView cũ hiển thị đúng tỉ lệ gốc 540x600 (dọc). */
+  aspect-ratio: 1 / 1;
+  padding-top: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+}
+.main-btn { position: absolute; inset: 0; display: block; width: 100%; height: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
 .main-btn .main-img { cursor: zoom-in; }
 .gal-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.92); color: var(--navy); font-size: 24px; line-height: 1; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .gal-prev { left: 10px; }
@@ -251,7 +277,8 @@ main { padding: 8px 0 40px; }
 .gal-count { position: absolute; right: 10px; bottom: 10px; background: rgba(16,35,58,.78); color: #fff; font-size: 13px; padding: 3px 10px; border-radius: 20px; }
 .gallery .main-img {
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
+  aspect-ratio: 1 / 1;
   object-fit: cover;
   border-radius: 8px;
   display: block;
@@ -368,6 +395,10 @@ main { padding: 8px 0 40px; }
   .hero { padding: 26px 0 30px; }
   .hero h1 { font-size: 25px; }
   .hero-stats b { font-size: 20px; }
+  /* 3 chỉ số vừa 1 hàng ở màn 360px: 3 x 96 + 2 x 14 = 316 <= 328. */
+  .hero-stats { gap: 14px; }
+  .hero-stats div { min-width: 96px; }
+  .site-header .wrap { gap: 10px; }
   .main-nav a { padding: 7px 8px; font-size: 14px; }
   .header-call { display: none; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
@@ -375,10 +406,20 @@ main { padding: 8px 0 40px; }
   .card-body h3 { font-size: 15.5px; }
   .price { font-size: 17px; }
   .price .old { display: block; margin-left: 0; }
+  /* Thẻ 2 cột hẹp (~158px): 2 nút cạnh nhau bị bóp, chữ gãy 2-3 dòng.
+     Xếp dọc, mỗi nút full chiều rộng thẻ. */
+  .cta { flex-direction: column; }
+  .cta .btn { flex: none; width: 100%; }
   .detail-price { font-size: 24px; }
   .detail-info h1 { font-size: 21px; }
   .page-title { font-size: 22px; }
   .thumbs button { width: 58px; height: 58px; }
   .gal-nav { width: 34px; height: 34px; font-size: 20px; }
   .lb-nav { width: 38px; height: 38px; font-size: 22px; }
+  /* Nút chọn biến thể: vùng bấm lớn hơn cho ngón tay. */
+  .opt { padding: 10px 12px; }
+  /* Bảng thông số / bảng giá: thu nhỏ để vừa màn 360px, không tràn ngang. */
+  .price-table, .spec { font-size: 13.5px; }
+  .spec th { width: 100px; }
+  .price-table th, .price-table td { padding: 6px; }
 }
