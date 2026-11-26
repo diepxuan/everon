@@ -91,6 +91,21 @@ a { color: var(--brand); }
   cursor: pointer;
 }
 .nav-item { position: relative; }
+/* Căn hàng dọc 2 mục dropdown với 3 mục thường (fix 2026-11-26):
+   .main-nav là flex nhưng không có align-items; 3 mục thường là <a>
+   trực tiếp (flex item, bị blockify, padding dọc tính vào chiều cao)
+   còn link trong .nav-item vẫn là inline nên padding dọc 8px không
+   làm nở line box — chữ bị đẩy lên cao hơn ~7px (đo Chromium:
+   tâm dọc 24.95 so với 32.19). Cho .nav-item thành flex + căn giữa
+   thì link lồng trong thành flex item, chiều cao tính đủ padding;
+   .nav-link inline-flex để mũi tên ▾ căn giữa với chữ.
+   Chỉ áp dụng trên desktop (min-width: 721px): dưới 720px .dropdown
+   là position: static (accordion dọc trong drawer), nếu .nav-item
+   thành flex-row thì dropdown sẽ nằm cạnh link thay vì dưới link. */
+@media (min-width: 721px) {
+  .nav-item { display: flex; align-items: center; }
+  .nav-link { display: inline-flex; align-items: center; }
+}
 .nav-link .caret { display: inline-block; font-size: 11px; margin-left: 2px; transition: transform .2s ease; }
 .nav-link.open .caret { transform: rotate(180deg); }
 .dropdown {
