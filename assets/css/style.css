@@ -88,6 +88,64 @@ a { color: var(--brand); }
   border-radius: 999px;
   white-space: nowrap;
 }
+/* Ô tìm kiếm ở header (mẫu DreamLand): gõ tên hoặc mã sản phẩm,
+   Enter thì sang trang danh mục với kết quả lọc (?q=). */
+.header-search { display: flex; gap: 6px; flex: 1 1 220px; max-width: 340px; }
+.header-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14.5px;
+  background: rgba(255, 255, 255, .12);
+  color: #fff;
+}
+.header-search input::placeholder { color: #b9c8d8; }
+.header-search button {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--zalo);
+  color: #fff;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ---------- Nút liên hệ nổi (mẫu trang gốc: 1 nút tròn trắng ~60px
+   góc dưới-phải; bấm mở chồng dọc các lựa chọn phía trên) ---------- */
+/* z-index 10: trên nội dung trang nhưng dưới header sticky (20, chứa
+   cả panel drawer mobile) và dưới backdrop (15) lẫn lightbox (200) —
+   drawer mở thì nút bị panel che, lightbox mở thì nút cũng bị che. */
+.contact-fab { position: fixed; right: 16px; bottom: 16px; z-index: 10; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.contact-fab-btn {
+  width: 60px; height: 60px; border-radius: 50%; border: 0;
+  background: #fff; color: var(--navy);
+  box-shadow: 0 4px 16px rgba(16, 35, 58, .35);
+  font-size: 26px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.contact-fab-btn svg { width: 28px; height: 28px; }
+.contact-fab-opts { display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
+.contact-fab.open .contact-fab-opts { display: flex; }
+.contact-fab-opt {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 8px 14px 8px 10px; text-decoration: none;
+  font-size: 14.5px; font-weight: 700; white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(16, 35, 58, .25);
+}
+.contact-fab-opt .fab-ico {
+  width: 30px; height: 30px; flex: none; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 12px; font-weight: 800;
+}
+.contact-fab-opt .fab-ico.zalo { background: var(--zalo); }
+.contact-fab-opt .fab-ico.call { background: var(--green); }
 
 /* ---------- Menu header (dropdown) ---------- */
 .nav-backdrop { display: none; }
@@ -532,11 +590,14 @@ main { padding: 8px 0 40px; }
 
 /* ---------- Menu mobile (≤720px) ---------- */
 @media (max-width: 720px) {
-  .nav-toggle { display: block; flex: none; }
-  /* Header 1 hàng: brand co lại, tagline cắt … (ẩn hẳn dưới 400px),
-     nút ☰ cùng hàng với logo, không rớt xuống hàng 2 một mình. */
+  .nav-toggle { display: block; flex: none; order: 2; }
+  /* Header 2 hàng (mẫu DreamLand): hàng 1 logo + nút ☰, hàng 2 ô tìm
+     kiếm full-width. Tagline ẩn trên mobile cho gọn hàng 1. */
+  .site-header .wrap { gap: 8px 12px; padding-top: 8px; padding-bottom: 8px; }
   .brand { flex: 1 1 0; min-width: 0; }
-  .brand > span:last-child { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand > span:last-child { display: none; }
+  .header-search { order: 3; flex: 1 1 100%; max-width: none; min-width: 0; } /* hàng 2 full-width */
+  .header-search input, .header-search button { font-size: 16px; } /* iOS không tự zoom khi chạm vào ô tìm */
   /* Nút Gọi showroom đã ẩn từ 480px, ẩn luôn tới 720px cho vừa nút
      hamburger; số điện thoại vẫn có trong thẻ showroom + cuối drawer. */
   .header-call { display: none; }
@@ -663,11 +724,6 @@ main { padding: 8px 0 40px; }
   .price-table, .spec { font-size: 13.5px; }
   .spec th { width: 100px; }
   .price-table th, .price-table td { padding: 6px; }
-}
-
-@media (max-width: 400px) {
-  /* Màn hẹp: ẩn hẳn tagline, header chỉ còn logo + nút ☰. */
-  .brand > span:last-child { display: none; }
 }
 
 /* ---------- Style Điệp Xuân (A–D) + trang chính sách (2026-11-26) ---------- */
