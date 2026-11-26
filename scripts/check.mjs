@@ -64,6 +64,12 @@ check("drawer: header 1 hàng mobile (brand co + tagline … + ẩn dưới 400p
 check("menu mobile: active nhẹ vạch vàng, không pill xám", cssSrc.includes("box-shadow: inset 3px 0 0 var(--gold)"));
 check("menu mobile: tag Sắp có không nền pill (background: transparent)", cssSrc.includes(".tag-soon { background: transparent;"));
 check("menu mobile: dấu ▾ xoay khi mở (rotate 180deg)", cssSrc.includes("rotate(180deg)"));
+/* Căn hàng dọc menu desktop (fix 2026-11-26): 2 mục dropdown từng cao
+   hơn 3 mục thường 7.24px (đo Chromium: tâm dọc 24.95 so với 32.19)
+   vì link trong .nav-item là inline nên padding dọc không nở line box. */
+check("menu desktop: .nav-item thành flex căn giữa trong @media (min-width: 721px)", /@media \(min-width: 721px\) \{\s*\.nav-item \{ display: flex; align-items: center; \}/.test(cssSrc));
+check("menu desktop: .nav-link inline-flex căn giữa mũi tên ▾ với chữ", cssSrc.includes(".nav-link { display: inline-flex; align-items: center; }"));
+check("menu mobile: chỉ duy nhất 1 chỗ .nav-item display:flex (không lọt vào block ≤720px, dropdown vẫn static)", (cssSrc.match(/\.nav-item \{ display: flex/g) || []).length === 1);
 const indexSrc = readFileSync(join(root, "index.html"), "utf8");
 check("menu: trang chủ không còn mục Danh mục sản phẩm", !indexSrc.includes("cat-title") && !indexSrc.includes("category-grid"));
 check("menu: trang chủ giữ Trang chủ active", indexSrc.includes('href="index.html" class="active"'));
