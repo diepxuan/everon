@@ -124,19 +124,22 @@ check("CSS có lưới 2 địa điểm", css.includes(".loc-grid") && css.inclu
 check("A: CSS có --rust #a93c11 (đúng mã diepxuan.com)", /--rust:\s*#a93c11/i.test(cssSrc));
 check("A: CSS có --rust-light cho chữ trên nền tối", cssSrc.includes("--rust-light:"));
 check("A: không còn dùng var(--gold)", !cssSrc.includes("var(--gold)"));
-check("A: chữ ĐIỆP XUÂN header dùng đỏ nâu sáng trên nền navy", cssSrc.includes(".brand strong") && /\.brand strong \{[^}]*color: var\(--rust-light\)/.test(cssSrc));
+check("A: tên hãng EVERON trắng + ĐIỆP XUÂN đỏ nâu sáng trên nền navy (lockup 2 dòng mẫu DreamLand)", /\.brand strong \{[^}]*color: #fff/.test(cssSrc) && /\.brand-lockup em \{[^}]*color: var\(--rust-light\)/.test(cssSrc));
 check("A: link Xem tất cả dùng #A93C11 trên nền sáng", /\.section-head \.more \{[^}]*color: var\(--rust\)/.test(cssSrc));
 check("A: vạch active drawer + số hero-stats dùng đỏ nâu sáng", cssSrc.includes("box-shadow: inset 3px 0 0 var(--rust-light)") && cssSrc.includes(".hero-stats b { display: block; font-size: 24px; color: var(--rust-light); }"));
 check("A: tiêu đề h2 trang chính sách có vạch đỏ nâu #A93C11", cssSrc.includes("border-left: 4px solid var(--rust)"));
 check("C: hero trang chủ có slogan Chăn ga gối đệm cao cấp!", indexSrc.includes('<span class="hero-slogan">Chăn ga gối đệm cao cấp!</span>') && cssSrc.includes(".hero-slogan { color: var(--rust-light);"));
 /* B. Logo Đ tự host (không hotlink): file tồn tại + mọi trang dùng. */
 check("B: logo Điệp Xuân tự host tồn tại (assets/img/logo-diep-xuan.png)", existsSync(join(root, "assets/img/logo-diep-xuan.png")) && statSync(join(root, "assets/img/logo-diep-xuan.png")).size > 1000);
-check("B: logo Đ đặt trên chip trắng bo tròn (render thử: trực tiếp trên navy khó đọc)", /\.brand-logo-dx \{[^}]*background: #fff;[^}]*border-radius: 8px/.test(cssSrc) && cssSrc.includes(".footer-logo-dx { height: 24px;"));
-check("B: drawer chỉ hiện monogram Đ + ĐIỆP XUÂN (ẩn wordmark Everon cho vừa 320px)", cssSrc.includes(".drawer-brand .brand-logo { display: none; }"));
+check("B: logo Đ đặt trên chip trắng bo tròn (mẫu DreamLand: .brand-logo 34px)", /\.brand-logo \{[^}]*background: #fff;[^}]*border-radius: 9px/.test(cssSrc) && cssSrc.includes(".footer-logo-dx { height: 24px;"));
+check("B: drawer hiện đủ cụm logo (chip Đ + EVERON/ĐIỆP XUÂN, không ẩn logo)", !cssSrc.includes(".drawer-brand .brand-logo { display: none; }") && cssSrc.includes(".drawer-text { display: flex;") && /\.drawer-brand em \{[^}]*color: var\(--rust-light\)/.test(cssSrc));
 for (const f of files.filter((x) => x.endsWith(".html"))) {
   const src = readFileSync(f, "utf8");
   const rel = f.replace(root + "/", "");
-  check("B: logo Đ cạnh logo Everon (header + drawer): " + rel, (src.match(/brand-logo-dx/g) || []).length >= 2 && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png"'));
+  check("logo header: lockup chip Đ + EVERON/ĐIỆP XUÂN xếp chồng: " + rel, src.includes('<span class="brand-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="34"'));
+  check("logo drawer: đầu drawer chip Đ + EVERON/ĐIỆP XUÂN: " + rel, src.includes('<span class="drawer-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="30"'));
+  check("logo header: không còn brand-logo-dx / wordmark Everon trong header+drawer (footer-logo-dx giữ nguyên): " + rel, !src.includes("brand-logo-dx") && !src.includes("logo-everon-trang.png") && src.includes('class="footer-logo-dx"'));
+  check("logo header: CSS ?v=5 (cache-bust sau khi đổi CSS): " + rel, src.includes("style.css?v=5"));
 }
 /* D + 8 trang chính sách. */
 const POLICY_PAGES = [
