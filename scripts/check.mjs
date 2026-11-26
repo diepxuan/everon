@@ -140,7 +140,7 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
   check("logo header: lockup chip Đ + EVERON/ĐIỆP XUÂN xếp chồng: " + rel, src.includes('<span class="brand-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="34"'));
   check("logo drawer: đầu drawer chip Đ + EVERON/ĐIỆP XUÂN: " + rel, src.includes('<span class="drawer-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="30"'));
   check("logo header: không còn brand-logo-dx / wordmark Everon trong header+drawer (footer-logo-dx giữ nguyên): " + rel, !src.includes("brand-logo-dx") && !src.includes("logo-everon-trang.png") && src.includes('class="footer-logo-dx"'));
-  check("logo header: CSS ?v=5 (cache-bust sau khi đổi CSS): " + rel, src.includes("style.css?v=5"));
+  check("logo header: CSS ?v=6 (cache-bust sau khi đổi CSS): " + rel, src.includes("style.css?v=6"));
 }
 /* D + 8 trang chính sách. */
 const POLICY_PAGES = [
@@ -164,8 +164,13 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
   const pfx = rel === "bo-chan-ga/index.html" ? "../" : "";
   check("D: footer có GPDKKD + địa chỉ xưởng: " + rel, src.includes("GPDKKD: 3100349022") && src.includes("Khu làng nghề Thuận Đức, Thuận Hoà, Thuận Đức, Đồng Hới, Quảng Bình"));
   check("D: footer có đủ 8 link chính sách + cửa hàng: " + rel, POLICY_PAGES.every((p) => src.includes('href="' + pfx + p + '"')));
+  /* Footer mới (gói 26/11/2026): 2 dòng cuối + bỏ dòng Zalo bán hàng. */
+  const footer = (src.match(/<footer[\s\S]*?<\/footer>/) || [""])[0];
+  check("footer mới: có 2 dòng cuối (©2026 + GPDKKD + Liên hệ 241): " + rel, footer.includes('class="footer-bottom"') && footer.includes("©2026 Công ty TNHH Điệp Xuân. GPDKKD 3100349022. Địa chỉ: Khu làng nghề Thuận Đức, Đồng Hới, Quảng Trị.") && footer.includes("Liên hệ: 241 Trần Hưng Đạo, Nam Lý 2, Đồng Hới, Quảng Trị."));
+  check("footer mới: không còn dòng Zalo bán hàng, Zalo vẫn còn ở mục liên hệ: " + rel, !footer.includes("Zalo bán hàng") && src.includes("data-zalo-buttons"));
 }
 check("D: CSS có lưới footer + nhóm link chính sách", cssSrc.includes(".footer-grid") && cssSrc.includes(".footer-policy"));
+check("footer mới: CSS có .footer-bottom", cssSrc.includes(".footer-bottom"));
 check("chính sách: site.json có đủ 2 số Zalo/hotline", Array.isArray(siteJson.zalo) && siteJson.zalo.map((z) => z.phone.replace(/\s/g, "")).includes("0911825151") && siteJson.zalo.map((z) => z.phone.replace(/\s/g, "")).includes("0363089565"));
 const appJs = readFileSync(join(root, "assets/js/app.js"), "utf8");
 check("app.js vẽ địa điểm từ site.locations", appJs.includes("[data-locations]") && appJs.includes("site.locations") && appJs.includes("locationsHTML"));
