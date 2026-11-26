@@ -76,6 +76,8 @@ a { color: var(--brand); }
 }
 
 /* ---------- Menu header (dropdown) ---------- */
+.nav-backdrop { display: none; }
+.drawer-head, .nav-close, .drawer-call { display: none; }
 .nav-toggle {
   display: none;
   margin-left: auto;
@@ -89,7 +91,8 @@ a { color: var(--brand); }
   cursor: pointer;
 }
 .nav-item { position: relative; }
-.nav-link .caret { font-size: 11px; margin-left: 2px; }
+.nav-link .caret { display: inline-block; font-size: 11px; margin-left: 2px; transition: transform .2s ease; }
+.nav-link.open .caret { transform: rotate(180deg); }
 .dropdown {
   display: none;
   position: absolute;
@@ -116,13 +119,25 @@ a { color: var(--brand); }
 .nav-item:focus-within .dropdown-products,
 .nav-link.open + .dropdown-products { display: flex; flex-wrap: wrap; gap: 8px 32px; }
 .menu-col { flex: 1 1 0; min-width: 0; }
-.menu-group h3 {
+/* Tiêu đề nhóm là nút bấm (accordion mobile); trên desktop trông y như
+   tiêu đề cũ, số lượng + dấu ▾ chỉ hiện trên mobile (CSS). */
+.menu-group-toggle {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  padding: 0;
   margin: 8px 8px 4px;
+  font-family: inherit;
   font-size: 12.5px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: .5px;
   color: var(--muted);
+  text-align: left;
+  cursor: default;
 }
+.menu-group-toggle .menu-count, .menu-group-toggle .caret { display: none; }
 .menu-group ul { list-style: none; margin: 0 0 6px; padding: 0; }
 .main-nav .dropdown a {
   color: var(--ink);
@@ -487,20 +502,66 @@ main { padding: 8px 0 40px; }
 
 /* ---------- Menu mobile (≤720px) ---------- */
 @media (max-width: 720px) {
-  .nav-toggle { display: block; }
-  /* Header gọn: nút Gọi showroom đã ẩn từ 480px, ẩn luôn tới 720px
-     cho vừa nút hamburger; số điện thoại vẫn có trong thẻ showroom. */
+  .nav-toggle { display: block; flex: none; }
+  /* Header 1 hàng: brand co lại, tagline cắt … (ẩn hẳn dưới 400px),
+     nút ☰ cùng hàng với logo, không rớt xuống hàng 2 một mình. */
+  .brand { flex: 1 1 0; min-width: 0; }
+  .brand > span:last-child { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Nút Gọi showroom đã ẩn từ 480px, ẩn luôn tới 720px cho vừa nút
+     hamburger; số điện thoại vẫn có trong thẻ showroom + cuối drawer. */
   .header-call { display: none; }
+  /* Drawer trượt từ phải (kiểu Facebook): nav thành panel fixed neo
+     mép phải, mặc định trượt ra ngoài màn hình, mở bằng transform. */
   .main-nav {
-    display: none;
-    width: 100%;
+    display: flex;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    height: 100dvh;
+    width: min(320px, 85vw);
+    transform: translateX(102%);
+    transition: transform .3s ease, visibility 0s linear .3s;
+    visibility: hidden;
     flex-direction: column;
     gap: 0;
     margin-left: 0;
+    background: var(--navy);
+    z-index: 40;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 0 16px;
   }
-  .main-nav.open { display: flex; }
+  .main-nav.open { transform: translateX(0); visibility: visible; transition: transform .3s ease; }
+  .main-nav.dragging { transition: none; }
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, .5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease;
+    z-index: 15;
+  }
+  .nav-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid rgba(255, 255, 255, .12); }
+  .drawer-brand { display: flex; align-items: center; gap: 8px; color: #fff; }
+  .drawer-brand img { height: 26px; width: auto; }
+  .drawer-brand strong { font-size: 16px; letter-spacing: .5px; white-space: nowrap; }
+  .nav-close { display: block; background: transparent; border: 1px solid rgba(255, 255, 255, .5); color: #fff; border-radius: 8px; padding: 6px 11px; font-size: 16px; line-height: 1; cursor: pointer; }
+  .drawer-call { display: block; margin: auto 16px 0; padding: 12px; text-align: center; color: #fff; background: var(--brand); border-radius: 10px; font-weight: 700; font-size: 15px; text-decoration: none; }
   .nav-item { width: 100%; }
-  /* Dropdown thành accordion dọc trong panel; chỉ mở khi link cha có
+  /* Hàng menu đều padding; active nhẹ: chữ trắng đậm + vạch dọc vàng,
+     không còn nền pill xám. */
+  .main-nav a { border-radius: 0; padding: 10px 12px; }
+  .main-nav a.active { background: transparent; color: #fff; box-shadow: inset 3px 0 0 var(--gold); }
+  .main-nav a:hover { background: transparent; color: #fff; }
+  /* Dropdown thành accordion dọc trong drawer; chỉ mở khi link cha có
      class open (JS), không mở bằng hover / focus. */
   .nav-item:hover .dropdown,
   .nav-item:focus-within .dropdown { display: none; }
@@ -517,11 +578,21 @@ main { padding: 8px 0 40px; }
     padding: 0 0 4px 14px;
   }
   .main-nav .dropdown a { color: #dbe6f2; }
+  .main-nav .menu-group a { color: #fff; font-weight: 700; }
   .main-nav .menu-group a:hover,
   .main-nav .dropdown-links a:hover { background: rgba(255, 255, 255, .14); color: #fff; }
-  .menu-group h3 { color: #9fb3c8; }
-  .menu-soon { color: #9fb3c8; }
-  .dropdown .tag-soon { background: rgba(255, 255, 255, .16); color: #dbe6f2; }
+  /* Accordion 2 tầng: mặc định chỉ hiện tiêu đề nhóm; bấm tiêu đề mới
+     mở các mục con của nhóm đó (1 nhóm mở tại 1 thời điểm). */
+  .menu-group-items { display: none; }
+  .menu-group.open .menu-group-items { display: block; padding-left: 12px; }
+  .menu-group-toggle { display: flex; align-items: center; gap: 6px; width: 100%; margin: 0; padding: 10px 8px; font-size: 14.5px; font-weight: 700; text-transform: none; letter-spacing: 0; color: #fff; cursor: pointer; }
+  .menu-group-toggle .menu-count { display: inline; color: #9fb3c8; font-weight: 600; }
+  .menu-group-toggle .caret { display: inline-block; margin-left: auto; font-size: 11px; transition: transform .2s ease; }
+  .menu-group.open .menu-group-toggle .caret { transform: rotate(180deg); }
+  /* Sắp có: chữ mờ nhỏ, không pill xám. Link đang bán (Bộ chăn ga)
+     trắng đậm để phân biệt với dòng chết. */
+  .menu-soon { color: #9fb3c8; font-size: 13px; padding: 6px 8px; }
+  .dropdown .tag-soon { background: transparent; color: #7e93a8; font-size: 12px; font-weight: 600; padding: 0; }
 }
 
 /* ---------- Mobile nhỏ ---------- */
@@ -533,7 +604,7 @@ main { padding: 8px 0 40px; }
   .hero-stats { gap: 14px; }
   .hero-stats div { min-width: 96px; }
   .site-header .wrap { gap: 10px; }
-  .main-nav a { padding: 7px 8px; font-size: 14px; }
+  .main-nav a { padding: 10px 12px; font-size: 14.5px; }
   .header-call { display: none; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
   .card-body { padding: 10px 12px 12px; }
@@ -556,4 +627,9 @@ main { padding: 8px 0 40px; }
   .price-table, .spec { font-size: 13.5px; }
   .spec th { width: 100px; }
   .price-table th, .price-table td { padding: 6px; }
+}
+
+@media (max-width: 400px) {
+  /* Màn hẹp: ẩn hẳn tagline, header chỉ còn logo + nút ☰. */
+  .brand > span:last-child { display: none; }
 }
