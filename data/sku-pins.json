@@ -1,0 +1,18 @@
+{
+  "_note": "Pin SKU co dinh cho san pham co .sku tren trang KHONG ON DINH giua cac lan cao (the .sku la SKU cua bien the mac dinh dang duoc phuc vu, ma hoa ca kich thuoc). Neu khong pin, sync sau co the doi ma san pham -> SP cu 'bien mat' + SP moi xuat hien, URL cu hong. Ma pin suy tu slug (giong mode dem), TRU khan-lau-everon giu ma goc cua nguon (EKDNANGSTK4040_S2, hau to _S2 on dinh qua cac bien the). Key bat dau '_' la ghi chu. Them pin moi khi phat hien them SP co .sku khong on dinh (dau hieu: .sku doi giua 2 lan cao, hoac .sku khac SKU bien the mac dinh).",
+  "_decided": "2026-11-26, coordinator full-catalog",
+  "khan-soi-tre": "KHANSOITRE",
+  "khan-cotton-cao-cap-hoa-tiet-soc-nau": "KHANCOTTONCAOCAPHOATIETSOCNAU",
+  "khan-cotton-cao-cap-hoa-tiet-soc-den": "KHANCOTTONCAOCAPHOATIETSOCDEN",
+  "khan-cotton-cao-cap-hoa-tiet-xam": "KHANCOTTONCAOCAPHOATIETXAM",
+  "khan-cotton-cao-cap-hoa-tiet-xanh-duong": "KHANCOTTONCAOCAPHOATIETXANHDUONG",
+  "khan-cotton-cao-cap-hoa-tiet-hoa-be": "KHANCOTTONCAOCAPHOATIETHOABE",
+  "khan-cotton-cao-cap-hoa-tiet-hoa-xanh": "KHANCOTTONCAOCAPHOATIETHOAXANH",
+  "khan-modal-cao-cap": "KHANMODALCAOCAP",
+  "khan-lau-everon": "EKDNANGSTK4040_S2",
+  "_note_tua": "4 SP Vo goi tua bi dedup [trung-sku] oan vi SP giu cung ma thiet ke KHONG co bien the tua (endpoint cua SP giu tra bien the tua voi gia 0 nen sweep loai bo; trang tua co vid + gia rieng). Pin giu chung lam SP rieng (SKU <ma>-TUA) de du catalog; 23 tua khac KHONG pin (bien the tua da co trong SP giu). 2 tua EPM25016/EPM25009 KHONG pin vi nguon de gia 0 ca variation lan trang (khong co gia de hien) — loai khoi catalog, ghi trong README goi PR.",
+  "vo-goi-tua-dich-den-hanh-phuc-epm25028": "EPM25028-TUA",
+  "vo-goi-tua-dom-sang-epm25041": "EPM25041-TUA",
+  "vo-goi-tua-khoi-dau-lac-quan-ept25027-copy-14865": "EPT25027-TUA",
+  "vo-goi-tua-khom-hoa-rung-dong-est25022": "EST25022-TUA"
+}
