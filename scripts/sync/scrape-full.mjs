@@ -1,18 +1,24 @@
-// scrape-full.mjs — Chạy TOÀN BỘ danh mục Bộ chăn ga cho everon.site.
+// scrape-full.mjs — Chạy TOÀN BỘ 1 danh mục cho everon.site (mặc định Bộ chăn ga).
 // Node.js 18+, chỉ dùng fetch có sẵn, KHÔNG dependency, KHÔNG npm install.
-// Mở rộng từ scripts/scrape-bo-chan-ga.mjs (bản thử 7 sản phẩm).
 //
 // Chạy:
-//   node scripts/sync/scrape-full.mjs                  (tăng dần: chỉ cào
-//     lại URL mới/đổi theo sitemap lastmod, giữ lại phần còn lại từ
-//     data/products.json; lần đầu hoặc khi chưa có lastmod cũ thì cào
-//     toàn bộ)
-//   node scripts/sync/scrape-full.mjs --full           (quét toàn bộ,
-//     bỏ qua lastmod — Chủ nhật và chạy tay full_scan dùng cờ này)
+//   node scripts/sync/scrape-full.mjs [--category <id>]  (mặc định bo-chan-ga;
+//     tăng dần: chỉ cào lại URL mới/đổi theo sitemap lastmod, giữ lại phần
+//     còn lại từ data/products.json; lần đầu hoặc khi chưa có lastmod cũ
+//     thì cào toàn bộ)
+//   node scripts/sync/scrape-full.mjs --category dem --full   (quét toàn bộ Đệm)
 //   node scripts/sync/scrape-full.mjs --limit 5        (chạy thử 5 sản phẩm đầu)
 //   node scripts/sync/scrape-full.mjs --resume         (tiếp tục từ checkpoint
-//     data/state.json — chỉ dùng khi chạy tay trên máy, workflow không dùng)
+//     data/state-<id>.json — chỉ dùng khi chạy tay trên máy, workflow không dùng)
 //   node scripts/sync/scrape-full.mjs --limit 5 --out data/test.json
+//
+// DANH MỤC (sửa 24/11/2026 — thêm Đệm): mỗi danh mục cào riêng ra file
+// data/products-<id>.full.json; export-site-data.mjs GỘP các file danh mục
+// vào data/products.json (xem README sync). Scraper KHÔNG BAO GIỜ ghi đè
+// products.json trực tiếp, nên danh mục khác không bị xóa khi sync 1 danh mục.
+// Trang danh mục nguồn của Đệm (/danh-muc-san-pham/dem) là trang trưng bày
+// bộ sưu tập, KHÔNG có lưới sản phẩm — sản phẩm Đệm nằm ở 4 danh mục con
+// (lò xo / bông ép / cao su / foam), cộng 1 URL ghim tay (xem extra_urls).
 //
 // TĂNG DẦN THEO LASTMOD (sửa 23/11/2026): lastmod lấy từ sitemap.xml
 // (đã sửa regex — trước đây regex sai nên lastmod luôn null) so với
@@ -24,11 +30,14 @@
 // - Ban cu chi liet ke (Bo/Ga) x (size giuong) nen bo sot bien the le nhu
 //   'Vo goi om 80x100' (EPM22064, SKU EVG80100EPM22064). Ban moi liet ke them
 //   loai Vo goi / Vo chan / Chan va size nho (45x65, 80x100...), ngan sach
-//   goi variation 8 -> 20 -> 26 (xem buildVariants; 26 tu PR #18: buoc 2
+//   goi variation 8 -> 20 -> 26 -> 32 (xem buildVariants; 32 tu 26/11/2026).
 //   thu het loai Bo/Ga + vong vet combo buoc 6a can them luot goi).
 // - Moi bien the ghi them truong stock (so luong ton rieng bien the do,
 //   null neu khong ro). Trang chi tiet chua hien thi ton tung bien the —
 //   cho anh quyet cach hien thi (xem README goi PR).
+// - Ngan sach goi variation 8 -> 20 -> 26 -> 32 (32 tu 26/11/2026: buoc 1
+//   chi thu size chuan truoc + buoc 6b vet size le sau vong vet vo goi;
+//   xem buildVariants).
 // NGUYÊN TẮC (theo phương án + quyết định đã chốt 22/11/2026):
 //  - Nguồn: everon.com, đã được Everpia đồng ý dùng toàn bộ catalog.
 //  - Discovery: sitemap.xml (lưu ý: server trả HTTP 404 nhưng body vẫn là XML
@@ -50,7 +59,6 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const BASE = 'https://everon.com';
-const CATEGORY_URL = `${BASE}/danh-muc-san-pham/bo-chan-ga`;
 const SITEMAP_URL = `${BASE}/sitemap.xml`;
 const DELAY_MS = 1500;
 const USER_AGENT =
@@ -62,13 +70,241 @@ const argVal = (name) => {
   const i = args.indexOf(name);
   return i >= 0 ? args[i + 1] : undefined;
 };
+// SKU PIN (them 26/11/2026): data/sku-pins.json — { slug: SKU, ... }.
+// Mot so san pham co .sku tren trang KHONG ON DINH giua cac lan cao: the
+// .sku la SKU cua bien the mac dinh dang duoc phuc vu, ma hoa ca kich
+// thuoc (vd khan-soi-tre: luc EKTAM70140PK, luc EKMAT4080PK; soc-nau:
+// .sku EKTAM70140BS nhung bien the mac dinh EKMAT4080BS; khan-lau:
+// .sku EKDNANGSTK4040_S2 chua "_" nen coreSku khong bat duoc). Neu de
+// scraper tu suy SKU tu .sku, sync sau co the doi ma san pham -> san
+// pham cu "bien mat" + san pham moi xuat hien, URL cu hong (cua hang
+// an toan >10% moi chan, 1-2 SP doi ma se lot). Pin buoc scraper dung
+// ma co dinh cho cac slug nay (truoc ca .sku). Key bat dau "_" la ghi
+// chu, khong phai pin. File khong co -> {} (cao nhu cu).
+const SKU_PINS = (() => {
+  try {
+    const p = resolve(ROOT, 'data', 'sku-pins.json');
+    if (!existsSync(p)) return {};
+    const raw = JSON.parse(readFileSync(p, 'utf8'));
+    const pins = {};
+    for (const [k, v] of Object.entries(raw)) {
+      if (k.startsWith('_')) continue;
+      if (typeof v === 'string' && v.trim()) pins[k] = v.trim();
+    }
+    return pins;
+  } catch { return {}; }
+})();
+if (Object.keys(SKU_PINS).length) console.log(`[sku-pins] ${Object.keys(SKU_PINS).length} pin`);
+// Loai bo biet truoc (dung de suy nhan loai bo tu TEN san pham khi khong co
+// nhom loai; thu tu dai -> ngan de .find tra ve loai cu the nhat).
+const KNOWN_SET_TYPES = ['Bộ ga chun chần bốn mùa', 'Bộ ga chun chần', 'Bộ chăn bốn mùa', 'Bộ ga phủ', 'Bộ ga chun', 'Ga chun chần', 'Ga chun', 'Ga phủ'];
+// Danh mục nguồn (mỗi danh mục = 1 lần chạy scraper, 1 file products-<id>.full.json).
+// - urls: các trang danh mục nguồn để discovery (phân trang ?page=1..N).
+// - source_url: trang danh mục cha để ghi vào dữ liệu + categories.json.
+// - sub_types: map URL danh mục con -> loại con (ghi vào attributes.mattress_type).
+// - extra_urls: URL sản phẩm ghim tay (có thật, mua được, nhưng không nằm
+//   trong lưới danh mục nào — vd Đệm bông ép thế hệ mới JAGD3). Discovery
+//   nào cũng gộp extra_urls vào, nên sync sau không làm mất sản phẩm này.
+// - alt_prefix: tiền tố alt ảnh; mode: 'bedding' (logic biến thể Bộ/Ga/Vỏ
+//   gối) hay 'mattress' (biến thể theo Loại/Chiều cao/Kích thước).
+// Danh muc nguon (moi danh muc = 1 lan chay scraper, 1 file products-<id>.full.json).
+// TOAN BO CATALOG (mo 26/11/2026): 12 danh muc, 735 san pham.
+// - urls: cac trang danh muc nguon de discovery (phan trang ?page=1..N).
+// - source_url: trang danh muc cha de ghi vao du lieu + categories.json.
+// - sub_types: map URL danh muc con -> loai con (ghi vao attributes.mattress_type
+//   neu mode 'mattress', hoac attributes.sub_type neu mode 'bedding').
+// - extra_urls: URL san pham ghim tay (co that, mua duoc, nhung khong nam
+//   trong luoi danh muc nao). Discovery nao cung gop extra_urls vao.
+// - allowlist data/assign-<id>.json (xem discover()): BAT BUOC doi voi cac
+//   danh muc co luoi chong cheo (Ga, Vo goi, Chan va vo chan, Tre em,
+//   K-Bedding) — luoi nguon chua ca san pham cua danh muc khac, neu cao
+//   het luoi thi export se chuyen nham san pham sang danh muc sai.
+// - alt_prefix: tien to alt anh; mode: 'bedding' (logic bien the Bo/Ga/Vo
+//   goi) hay 'mattress' (bien the theo Loai/Chieu cao/Kich thuoc).
+const CATEGORIES = {
+  'bo-chan-ga': {
+    id: 'bo-chan-ga', name: 'Bộ chăn ga',
+    urls: [`${BASE}/danh-muc-san-pham/bo-chan-ga`],
+    source_url: `${BASE}/danh-muc-san-pham/bo-chan-ga`,
+    sub_types: {}, extra_urls: [], alt_prefix: 'Bộ chăn ga', mode: 'bedding',
+  },
+  'dem': {
+    id: 'dem', name: 'Đệm',
+    urls: [
+      `${BASE}/danh-muc-san-pham/dem-lo-xo`,
+      `${BASE}/danh-muc-san-pham/dem-bong-ep`,
+      `${BASE}/danh-muc-san-pham/dem-cao-su`,
+      `${BASE}/danh-muc-san-pham/dem-foam`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/dem`,
+    sub_types: {
+      [`${BASE}/danh-muc-san-pham/dem-lo-xo`]: 'lo-xo',
+      [`${BASE}/danh-muc-san-pham/dem-bong-ep`]: 'bong-ep',
+      [`${BASE}/danh-muc-san-pham/dem-cao-su`]: 'cao-su',
+      [`${BASE}/danh-muc-san-pham/dem-foam`]: 'foam',
+    },
+    extra_urls: [`${BASE}/san-pham/dem-bong-ep-the-he-moi-jagd3`],
+    extra_url_types: { [`${BASE}/san-pham/dem-bong-ep-the-he-moi-jagd3`]: 'bong-ep' },
+    alt_prefix: 'Đệm', mode: 'mattress',
+  },
+  'dem-k-bedding': {
+    id: 'dem-k-bedding', name: 'Đệm K-Bedding',
+    urls: [`${BASE}/danh-muc-san-pham/dem-k-bedding`],
+    source_url: `${BASE}/danh-muc-san-pham/dem-k-bedding`,
+    sub_types: { [`${BASE}/danh-muc-san-pham/dem-k-bedding`]: 'bong-ep' },
+    extra_urls: [], alt_prefix: 'Đệm K-Bedding', mode: 'mattress',
+  },
+  'k-bedding': {
+    id: 'k-bedding', name: 'K-Bedding',
+    urls: [
+      `${BASE}/danh-muc-san-pham/bo-chan-ga-k-bedding`,
+      `${BASE}/danh-muc-san-pham/phu-kien-k-bedding`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/bo-chan-ga-k-bedding`,
+    sub_types: {
+      [`${BASE}/danh-muc-san-pham/bo-chan-ga-k-bedding`]: 'bo-chan-ga',
+      [`${BASE}/danh-muc-san-pham/phu-kien-k-bedding`]: 'phu-kien',
+    },
+    extra_urls: [], alt_prefix: 'K-Bedding', mode: 'bedding',
+  },
+  'tre-em': {
+    id: 'tre-em', name: 'Trẻ em',
+    urls: [
+      `${BASE}/danh-muc-san-pham/chan-ga-goi-tre-em`,
+      `${BASE}/danh-muc-san-pham/bo-chan-ga-tre-em`,
+      `${BASE}/danh-muc-san-pham/chan-va-vo-chan-tre-em`,
+      `${BASE}/danh-muc-san-pham/vo-goi-tre-em`,
+      `${BASE}/danh-muc-san-pham/ruot-goi-chan-tre-em`,
+      `${BASE}/danh-muc-san-pham/phu-kien-tre-em`,
+      `${BASE}/danh-muc-san-pham/tam-trai-topper-tre-em`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/chan-ga-goi-tre-em`,
+    sub_types: {
+      [`${BASE}/danh-muc-san-pham/chan-ga-goi-tre-em`]: 'chan-ga-goi',
+      [`${BASE}/danh-muc-san-pham/bo-chan-ga-tre-em`]: 'bo-chan-ga',
+      [`${BASE}/danh-muc-san-pham/chan-va-vo-chan-tre-em`]: 'chan-va-vo-chan',
+      [`${BASE}/danh-muc-san-pham/vo-goi-tre-em`]: 'vo-goi',
+      [`${BASE}/danh-muc-san-pham/ruot-goi-chan-tre-em`]: 'ruot',
+      [`${BASE}/danh-muc-san-pham/phu-kien-tre-em`]: 'phu-kien',
+      [`${BASE}/danh-muc-san-pham/tam-trai-topper-tre-em`]: 'tam-trai',
+    },
+    extra_urls: [], alt_prefix: 'Trẻ em', mode: 'bedding',
+  },
+  'bo-chan-ga-artemis': {
+    id: 'bo-chan-ga-artemis', name: 'Bộ chăn ga Artemis',
+    urls: [`${BASE}/danh-muc-san-pham/bo-chan-ga-artemis`],
+    source_url: `${BASE}/danh-muc-san-pham/bo-chan-ga-artemis`,
+    sub_types: {}, extra_urls: [], alt_prefix: 'Bộ chăn ga Artemis', mode: 'bedding',
+  },
+  'ga': {
+    id: 'ga', name: 'Ga',
+    urls: [`${BASE}/danh-muc-san-pham/ga`],
+    source_url: `${BASE}/danh-muc-san-pham/ga`,
+    sub_types: {}, extra_urls: [], alt_prefix: 'Ga', mode: 'bedding',
+  },
+  'vo-goi': {
+    id: 'vo-goi', name: 'Vỏ gối',
+    urls: [
+      `${BASE}/danh-muc-san-pham/vo-goi`,
+      `${BASE}/danh-muc-san-pham/vo-goi-tua`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/vo-goi`,
+    sub_types: { [`${BASE}/danh-muc-san-pham/vo-goi-tua`]: 'vo-goi-tua' },
+    extra_urls: [], alt_prefix: 'Vỏ gối', mode: 'bedding',
+  },
+  'chan-va-vo-chan': {
+    id: 'chan-va-vo-chan', name: 'Chăn và vỏ chăn',
+    urls: [
+      `${BASE}/danh-muc-san-pham/chan-va-vo-chan`,
+      `${BASE}/danh-muc-san-pham/chan`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/chan-va-vo-chan`,
+    sub_types: { [`${BASE}/danh-muc-san-pham/chan`]: 'chan' },
+    extra_urls: [`${BASE}/san-pham/chan-ni-popcorn`],
+    extra_url_types: {},
+    alt_prefix: 'Chăn và vỏ chăn', mode: 'bedding',
+  },
+  'ruot': {
+    id: 'ruot', name: 'Ruột gối / Ruột chăn',
+    urls: [
+      `${BASE}/danh-muc-san-pham/ruot-goi`,
+      `${BASE}/danh-muc-san-pham/ruot-chan-2`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/ruot`,
+    sub_types: {
+      [`${BASE}/danh-muc-san-pham/ruot-goi`]: 'ruot-goi',
+      [`${BASE}/danh-muc-san-pham/ruot-chan-2`]: 'ruot-chan',
+    },
+    extra_urls: [], alt_prefix: 'Ruột', mode: 'bedding',
+  },
+  'goi': {
+    id: 'goi', name: 'Gối',
+    urls: [`${BASE}/danh-muc-san-pham/goi`],
+    source_url: `${BASE}/danh-muc-san-pham/goi`,
+    sub_types: {},
+    extra_urls: [
+      `${BASE}/san-pham/goi-chu-u-5s`,
+      `${BASE}/san-pham/goi-chong-trao-nguoc-everon`,
+      `${BASE}/san-pham/goi-tua-everon`,
+      `${BASE}/san-pham/goi-5s`,
+      `${BASE}/san-pham/goi-dinh-hinh`,
+    ],
+    extra_url_types: {},
+    alt_prefix: 'Gối', mode: 'bedding',
+  },
+  'phu-kien': {
+    id: 'phu-kien', name: 'Phụ kiện',
+    urls: [
+      `${BASE}/danh-muc-san-pham/phu-kien-dem`,
+      `${BASE}/danh-muc-san-pham/phu-kien-khac`,
+      `${BASE}/danh-muc-san-pham/phu-kien-trang-tri`,
+      `${BASE}/danh-muc-san-pham/tam-trai`,
+      `${BASE}/danh-muc-san-pham/topper-tam-trai`,
+      `${BASE}/danh-muc-san-pham/bao-ve-dem-chong-tham`,
+    ],
+    source_url: `${BASE}/danh-muc-san-pham/phu-kien`,
+    sub_types: {
+      [`${BASE}/danh-muc-san-pham/phu-kien-dem`]: 'phu-kien-dem',
+      [`${BASE}/danh-muc-san-pham/phu-kien-khac`]: 'phu-kien-khac',
+      [`${BASE}/danh-muc-san-pham/phu-kien-trang-tri`]: 'phu-kien-trang-tri',
+      [`${BASE}/danh-muc-san-pham/tam-trai`]: 'tam-trai',
+      [`${BASE}/danh-muc-san-pham/topper-tam-trai`]: 'topper',
+      [`${BASE}/danh-muc-san-pham/bao-ve-dem-chong-tham`]: 'bao-ve-dem',
+    },
+    extra_urls: [
+      `${BASE}/san-pham/khan-cotton-cao-cap-hoa-tiet-hoa-xanh`,
+      `${BASE}/san-pham/khan-cotton-cao-cap-hoa-tiet-hoa-be`,
+      `${BASE}/san-pham/khan-cotton-cao-cap-hoa-tiet-soc-nau`,
+      `${BASE}/san-pham/khan-cotton-cao-cap-hoa-tiet-soc-den`,
+      `${BASE}/san-pham/khan-cotton-cao-cap-hoa-tiet-xam`,
+      `${BASE}/san-pham/khan-cotton-cao-cap-hoa-tiet-xanh-duong`,
+      `${BASE}/san-pham/khan-soi-tre`,
+      `${BASE}/san-pham/khan-lau-everon`,
+      `${BASE}/san-pham/khan-modal-cao-cap`,
+      `${BASE}/san-pham/rem-voan-trang-tri`,
+      `${BASE}/san-pham/rem-vai-can-nang-80-100`,
+      `${BASE}/san-pham/rem-vai-can-nang-100`,
+      `${BASE}/san-pham/binhcoc-giu-nhiet-everon`,
+    ],
+    extra_url_types: {},
+    alt_prefix: 'Phụ kiện', mode: 'bedding',
+  },
+};
+const CATEGORY_ID = argVal('--category') ?? 'bo-chan-ga';
+const CAT = CATEGORIES[CATEGORY_ID];
+if (!CAT) { console.error(`[loi] --category khong biet: ${CATEGORY_ID} (co: ${Object.keys(CATEGORIES).join(', ')})`); process.exit(2); }
+const CATEGORY_URL = CAT.urls[0]; // trang danh mục chính (dùng khi chỉ có 1 URL)
 const LIMIT = Number(argVal('--limit') ?? NaN);
 const RESUME = args.includes('--resume');
 const SKIP_DISCOVERY = args.includes('--skip-discovery');
 const FULL = args.includes('--full'); // quet toan bo: bo qua lastmod, cao lai tat ca URL
-const OUT = argVal('--out') ?? 'data/products-bo-chan-ga.full.json';
-const STATE_FILE = 'data/state.json';
-const JSONL_FILE = 'data/products-bo-chan-ga.full.jsonl';
+// File ra theo danh mục (để export-site-data.mjs gộp nhiều danh mục;
+// file trung gian này KHÔNG commit — workflow dọn sau mỗi lần chạy).
+const OUT = argVal('--out') ?? `data/products-${CATEGORY_ID}.full.json`;
+const STATE_FILE = `data/state-${CATEGORY_ID}.json`;
+const JSONL_FILE = `data/products-${CATEGORY_ID}.full.jsonl`;
+const DISCOVERY_FILE = `data/discovery-${CATEGORY_ID}.json`;
+const RUN_STATS_FILE = `data/run-stats-${CATEGORY_ID}.json`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let consecutiveErrors = 0;
@@ -123,10 +359,18 @@ const parseVnd = (s) => {
 // EBTT2022FRYARN) — lay phan SKU chuan o cuoi neu co, neu khong thi bo tien
 // to bien the ^EB[A-Z]{2}\d{4} (VD FRYARN). Tuyet doi KHONG dung data.sku cua
 // variation lam SKU san pham: do la SKU cua bien the (VD EBGC2022EPC27027).
+// Ma san pham that tren trang phu kien (vd EGO6638CD, EGT4545KM1,
+// EGTTG8558PN310511) ket thuc bang CHU nen regex cu ([A-Z]{2,5}\d{3,5}$)
+// khong bat duoc -> coreSku tra null -> scraper skip mat san pham.
+// Thu tu: (1) tach ma chuan o cuoi neu co (EBBM1620EPC27027 -> EPC27027);
+// (2) neu khong tach duoc ma van la ma that (bat dau bang >=2 chu hoa,
+// co chu so, dai >=6) thi dung nguyen ma .sku.
 const coreSku = (code) => {
   if (!code) return null;
   const m1 = String(code).trim().match(/([A-Z]{2,5}\d{3,5})\s*$/);
   if (m1) return m1[1];
+  const verbatim = String(code).trim();
+  if (/^[A-Z]{2,}[A-Z0-9]*\d[A-Z0-9]*$/.test(verbatim) && verbatim.length >= 6) return verbatim.toUpperCase();
   const stripped = String(code).trim().replace(/^EB[A-Z]{2}\d{4}/, '');
   if (stripped.length >= 3 && stripped !== String(code).trim()) return stripped;
   return null;
@@ -157,33 +401,89 @@ async function discover() {
   const sitemapSet = new Set(sitemapProducts.map((e) => e.url));
   const lastmodByUrl = Object.fromEntries(sitemapProducts.map((e) => [e.url, e.lastmod]));
 
-  const catUrls = [];
-  let page = 1;
-  let catCount = null;
-  for (;;) {
-    const html = await fetchText(`${CATEGORY_URL}?page=${page}`);
-    if (catCount === null) catCount = Number(text(html).match(/(\d+)\s*sản phẩm/)?.[1] ?? NaN);
-    const gridStart = html.indexOf('list-product');
-    const grid = gridStart >= 0 ? html.slice(gridStart) : html;
-    const links = [...new Set([...grid.matchAll(/href="(https:\/\/everon\.com\/san-pham\/[^"?#]+)"/g)].map((m) => m[1]))];
-    console.log(`[discovery] danh muc trang ${page}: ${links.length} link`);
-    if (links.length === 0) break;
-    links.forEach((u) => { if (!catUrls.includes(u)) catUrls.push(u); });
-    await sleep(DELAY_MS);
-    page += 1;
-    if (page > 30) break; // phong thu
-    // het trang khi khong con nut next / het so trang trong pagination
-    if (!html.includes(`?page=${page}`) && !html.includes(`page=${page}`)) break;
+  // Cào từng trang danh mục nguồn (mỗi trang phân trang ?page=1..N).
+  // Lưu ý: trang cha của Đệm (/dem) là trang trưng bày bộ sưu tập, KHÔNG
+  // có lưới sản phẩm — chỉ 4 trang con mới có lưới; vì vậy CATEGORIES.dem
+  // liệt kê 4 URL con, không dùng URL cha để discovery.
+  let catUrls = [];  // let: allowlist o duoi co the loc lai danh sach nay
+  const subTypeByUrl = {};
+  let catCount = 0;
+  let pagesFetched = 0;
+  for (const catUrl of CAT.urls) {
+    let page = 1;
+    let pageCount = null;
+    for (;;) {
+      const html = await fetchText(`${catUrl}?page=${page}`);
+      if (pageCount === null) pageCount = Number(text(html).match(/(\d+)\s*sản phẩm/)?.[1] ?? NaN);
+      const gridStart = html.indexOf('list-product');
+      const grid = gridStart >= 0 ? html.slice(gridStart) : html;
+      const links = [...new Set([...grid.matchAll(/href="(https:\/\/everon\.com\/san-pham\/[^"?#]+)"/g)].map((m) => m[1]))];
+      console.log(`[discovery] ${catUrl} trang ${page}: ${links.length} link`);
+      if (links.length === 0) break;
+      // Khi trang KHÔNG có lưới 'list-product' (vd trang cha /dem), toàn
+      // bộ HTML vẫn có link san-pham (sản phẩm nổi bật) — KHÔNG lấy, vì
+      // đó không phải sản phẩm của danh mục này. Chỉ lấy khi có lưới.
+      if (gridStart < 0) { console.log(`[discovery] ${catUrl}: khong co luoi list-product — bo qua trang nay`); break; }
+      links.forEach((u) => {
+        if (!catUrls.includes(u)) catUrls.push(u);
+        const sub = CAT.sub_types[catUrl];
+        if (sub && !subTypeByUrl[u]) subTypeByUrl[u] = sub;
+      });
+      await sleep(DELAY_MS);
+      page += 1;
+      pagesFetched += 1;
+      if (page > 30) break; // phong thu
+      // het trang khi khong con nut next / het so trang trong pagination
+      if (!html.includes(`?page=${page}`) && !html.includes(`page=${page}`)) break;
+    }
+    if (Number.isFinite(pageCount)) catCount += pageCount;
   }
+  // URL ghim tay (extra_urls): sản phẩm có thật nhưng không nằm trong lưới
+  // danh mục nào. Gộp vào discovery mọi lần chạy để sync sau không làm mất.
+  for (const u of CAT.extra_urls) {
+    if (!catUrls.includes(u)) { catUrls.push(u); console.log(`[discovery] URL ghim tay: ${u}`); }
+    const t = CAT.extra_url_types?.[u];
+    if (t && !subTypeByUrl[u]) subTypeByUrl[u] = t;
+  }
+  // Allowlist (data/assign-<id>.json): neu co, chi giu URL trong allowlist.
+  // Ly do: luoi danh muc nguon chong cheo nhau — vd luoi Ga co 170 URL
+  // nhung 157 trong do la Bo chan ga (set nao cung co Ga); neu cao het
+  // luoi Ga thi export se chuyen nham 157 SP sang Ga. Allowlist do
+  // discovery-toan-catalog dinh san (1 SP = 1 danh muc chinh), gom
+  // [{url, sub_type}]; URL trong allowlist nhung khong co trong luoi
+  // (san pham that nhung khong nam trong luoi nao) cung duoc them vao.
+  // sub_type trong allowlist thang (ghi vao attributes.sub_type /
+  // attributes.mattress_type tuy mode). Neu khong co file allowlist thi
+  // dung luoi day du nhu cu.
+  let assignList = null;
+  try {
+    assignList = JSON.parse(readFileSync(`${ROOT}/data/assign-${CAT.id}.json`, 'utf8'));
+  } catch { /* khong co allowlist: dung luoi day du */ }
+  if (Array.isArray(assignList) && assignList.length) {
+    const allowed = new Map(assignList.map((e) => [e.url, e.sub_type ?? null]));
+    const beforeFilter = catUrls.length;
+    catUrls = catUrls.filter((u) => allowed.has(u));
+    for (const u of allowed.keys()) if (!catUrls.includes(u)) catUrls.push(u);
+    for (const k of Object.keys(subTypeByUrl)) delete subTypeByUrl[k];
+    for (const u of catUrls) { const st = allowed.get(u); if (st) subTypeByUrl[u] = st; }
+    console.log(`[discovery] allowlist data/assign-${CAT.id}.json: ${beforeFilter} -> ${catUrls.length} URL`);
+  }
+  const countOnSource = (Array.isArray(assignList) && assignList.length)
+    ? catUrls.length
+    : (Number.isFinite(catCount) ? catCount + CAT.extra_urls.length : null);
   const notInSitemap = catUrls.filter((u) => !sitemapSet.has(u));
   const sitemapNotInCat = [...sitemapSet].filter((u) => !catUrls.includes(u));
   const discovery = {
     crawled_at: new Date().toISOString(),
-    category_url: CATEGORY_URL,
-    category_count_on_source: Number.isFinite(catCount) ? catCount : null,
-    category_pages_fetched: page - 1,
+    category_id: CAT.id,
+    category_url: CAT.source_url,
+    category_urls: CAT.urls,
+    category_count_on_source: countOnSource,
+    category_pages_fetched: pagesFetched,
     category_urls_found: catUrls.length,
     category_urls_unique: new Set(catUrls).size,
+    sub_type_by_url: subTypeByUrl,
+    extra_urls: CAT.extra_urls,
     sitemap_total_urls: entries.length,
     sitemap_product_urls: sitemapProducts.length,
     sitemap_product_urls_not_in_category: sitemapNotInCat.length,
@@ -192,8 +492,8 @@ async function discover() {
     lastmod_by_url: lastmodByUrl,
   };
   mkdirSync(`${ROOT}/data`, { recursive: true });
-  writeFileSync(`${ROOT}/data/discovery.json`, JSON.stringify(discovery, null, 2) + '\n');
-  console.log(`[discovery] danh muc: ${catUrls.length} URL duy nhat (trang bao ${catCount}); khong co trong sitemap: ${notInSitemap.length}; sitemap co ${sitemapNotInCat.length} URL san-pham ngoai danh muc nay.`);
+  writeFileSync(`${ROOT}/${DISCOVERY_FILE}`, JSON.stringify(discovery, null, 2) + '\n');
+  console.log(`[discovery] danh muc ${CAT.id}: ${catUrls.length} URL duy nhat (trang bao ${catCount} + ${CAT.extra_urls.length} ghim tay); khong co trong sitemap: ${notInSitemap.length}; sitemap co ${sitemapNotInCat.length} URL san-pham ngoai danh muc nay.`);
   return discovery;
 }
 
@@ -230,7 +530,8 @@ function extractBase(html, url) {
   const skuFromUrl = /^[a-z]{2,5}\d{3,5}$/i.test(tail) ? tail.toUpperCase()
     // Du phong: mot so san pham khong co SKU chuan trong URL (VD bo-chan-ga-maison
     // -> MAISON, mint-mb2301mt -> MB2301MT) — dung luon duoi URL viet hoa lam ma.
-    : (/^[a-z0-9]{4,}$/i.test(tail) ? tail.toUpperCase() : null);
+    // NGOAI TRU tu thuong hieu "everon" (duoi URL "...-everon" khong phai ma).
+    : (/^[a-z0-9]{4,}$/i.test(tail) && tail.toUpperCase() !== 'EVERON' ? tail.toUpperCase() : null);
   const sku = skuFromPage ?? skuFromUrl;
   const variationId = html.match(/product-variation\/(\d+)/)?.[1] ?? null;
   const csrf = html.match(/<meta name="csrf-token" content="([^"]+)"/)?.[1] ?? null;
@@ -251,7 +552,6 @@ function extractBase(html, url) {
   const images = [...new Set([...html.matchAll(/(?:https:\/\/everon\.com)?(\/upload\/[^"'\s)]+?-600x0\.jpg)/g)]
     .map((m) => `${BASE}${m[1]}`))].filter((u) => u.includes(`/${slug}/`) || (sku && u.toLowerCase().includes(`/${sku.toLowerCase()}/`)))
     .sort((a, b) => (a.includes('thumbnail') ? 0 : 1) - (b.includes('thumbnail') ? 0 : 1));
-  const KNOWN_SET_TYPES = ['Bộ ga chun chần bốn mùa', 'Bộ ga chun chần', 'Bộ chăn bốn mùa', 'Bộ ga phủ', 'Bộ ga chun', 'Ga chun chần', 'Ga chun', 'Ga phủ'];
   const setTypes = KNOWN_SET_TYPES.filter((st) => t.includes(st));
   const collections = [];
   if (/BST Những Mảnh Êm/.test(t)) collections.push('bst-nhung-manh-em');
@@ -338,17 +638,60 @@ const vStock = (vd) => {
   return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 };
 
-async function buildVariants(base, defVar) {
+async function buildVariants(base, defVar, productSku) {
   // defVar: ket qua variation khong tham so (bien the mac dinh that su cua trang).
   const d = defVar?.data ?? null;
   const defPrice = vPrice(d);
   const defCompare = vCompare(d);
-  const defSku = d?.sku || base.sku;
+  const defSku = d?.sku || productSku;
   const defSel = (d?.selected_attributes ?? []).map((a) => String(a.id));
   const groups = base.groups;
-  const colorGroup = groups[0] ?? null;
-  const setGroup = groups.find((g) => /Sản phẩm/.test(g.title)) ?? groups[1] ?? null;
-  const sizeGroup = groups.find((g) => /Kích thước/.test(g.title)) ?? groups[2] ?? null;
+  // Nhom Mau nhan dien theo TIEU DE (khong lay groups[0]): san pham
+  // K-Bedding thuong KHONG co nhom Mau (groups[0] la nhom San pham) —
+  // ban cu lay nham id loai bo lam colorId, khien moi lan goi sweep
+  // [colorId, setId, sizeId] chua 2 gia tri xung dot cua cung nhom
+  // San pham (vd [661, 664, 64]) nen server tra ve bien the mac dinh
+  // va bo sot hang loat bien the (kiem chung 26/11/2026, KMS402:
+  // [661,664,64] -> mac dinh 600k, [664,64] -> that 209k).
+  // Khong co nhom Mau -> colorId = null, goi chi [setId, sizeId].
+  const colorGroup = groups.find((g) => /Màu/.test(g.title)) ?? null;
+  const sizeGroup = groups.find((g) => /Kích thước/.test(g.title)) ?? null;
+  // Truc "loai" = nhom DAU TIEN khong phai nhom Mau, khong phai nhom
+  // Kich thuoc (theo thu tu tren trang) — KHONG nhat thiet mang ten
+  // "San pham". Ban cu tim /San pham/ nen bo sot 2 dang san pham
+  // (kiem chung 26/11/2026):
+  //  - BCOR (rem): [Kich thuoc Rem, Mau Rem] — loai that la "Mau Rem"
+  //    (8 hoa tiet); tim /San pham/ -> null -> singleSizeMode nen chi
+  //    con 1 bien the mac dinh, mat 7 hoa tiet.
+  //  - DOWNFEEL: [Mau sac, Chieu cao san pham, Kich thuoc] — loai that
+  //    la "Chieu cao san pham" ("7 cm"); bo qua id chieu cao nen chi
+  //    con 1 bien the thay vi 3.
+  // KMS402/CPM27202 ([Mau, San pham, Kich thuoc]) van dung nhu cu.
+  const setGroup = groups.find((g) => g !== colorGroup && g !== sizeGroup) ?? null;
+  // San pham chi co nhom Kich thuoc (vd KMP403: khong co nhom San pham
+  // lan Mau) — truoc day roi vao return som, chi giu bien the mac dinh
+  // (thuc te KMP403 co them 200x220 = 1.039.000d). O che do nay quet
+  // het cac size bang [sizeId]; nhan loai bo lay tu base.setTypes.
+  const singleSizeMode = !setGroup;
+  // Nhan loai bo cho SP chi co nhom size: cat ten SP o tu chat lieu
+  // (vd "Chan he Microfiber KMP403" -> "Chan he"; "Bo ga chun
+  // Microfiber KMS402" -> "Bo ga chun"). Dung ten that thay vi
+  // base.setTypes[0] ("Bo ga chun chan" — sai voi SP khong phai bo ga,
+  // vd khan/rem o Phu kien). Khong cat duoc thi dung setTypes[0].
+  const nameCutAtMaterial = (() => {
+    if (!base.material || !base.nameFromTitle) return null;
+    const i = base.nameFromTitle.toLowerCase().indexOf(String(base.material).toLowerCase());
+    if (i <= 0) return null;
+    const label = base.nameFromTitle.slice(0, i).trim();
+    return label || null;
+  })();
+  const singleSetLabel = singleSizeMode ? (nameCutAtMaterial
+    // Nhan loai bo lay tu TEN san pham (khong lay base.setTypes — no tinh
+    // tu TOAN BO trang nen co the dinh loai cua san pham lien quan, vd
+    // "Dem suoi Carbon" bi gan "Bo ga chun chan"). Ten khong chua loai
+    // nao thi dung "San pham" (trung thuc hon doan mo).
+    ?? KNOWN_SET_TYPES.find((st) => base.nameFromTitle?.includes(st))
+    ?? 'Sản phẩm') : null;
   const colorId = defSel.find((id) => colorGroup?.options.some((o) => o.id === id))
     ?? colorGroup?.options.find((o) => o.checked)?.id
     ?? colorGroup?.options[0]?.id ?? null;
@@ -356,11 +699,31 @@ async function buildVariants(base, defVar) {
     ?? setGroup?.options.find((o) => o.checked)?.id ?? null;
   const defSizeId = defSel.find((id) => sizeGroup?.options.some((o) => o.id === id))
     ?? sizeGroup?.options.find((o) => o.checked)?.id ?? null;
+  // Gia tri mac dinh cua MOI nhom (theo thu tu tren trang): endpoint can
+  // du 1 id cho moi nhom; nhom phu (khong phai Mau/loai/size — vd neu co
+  // them nhom "Chat lieu") giu gia tri mac dinh, khong bao gio quet.
+  // Lay tu defSel, roi checked, roi options[0] (giong cach lay colorId/
+  // defSetId/defSizeId o tren).
+  const groupDefaultId = (g) => {
+    if (!g) return null;
+    return defSel.find((id) => g.options.some((o) => o.id === id))
+      ?? g.options.find((o) => o.checked)?.id
+      ?? g.options[0]?.id ?? null;
+  };
+  // attrs cho 1 lan goi variation: moi nhom dong gop dung 1 id, theo thu
+  // tu tren trang; nhom loai/size lay gia tri quet (neu co), nhom Mau lay
+  // colorId (mac dinh, khong quet), cac nhom khac lay mac dinh.
+  const attrsFor = (setId, sizeId) => groups.map((g) => {
+    if (g === setGroup) return setId ?? groupDefaultId(g);
+    if (g === sizeGroup) return sizeId ?? groupDefaultId(g);
+    if (g === colorGroup) return colorId;
+    return groupDefaultId(g);
+  }).filter((x) => x != null);
   const labelOf = (group, id) => group?.options.find((o) => o.id === String(id))?.txt ?? null;
   const variants = [];
   const seen = new Set();
   const pushVariant = (setId, sizeId, vd) => {
-    const setTxt = labelOf(setGroup, setId);
+    const setTxt = labelOf(setGroup, setId) ?? (singleSizeMode ? singleSetLabel : null);
     const sizeTxt = labelOf(sizeGroup, sizeId);
     if (!setTxt || !sizeTxt) return false;
     const key = `${setTxt}|${sizeTxt}`;
@@ -372,7 +735,7 @@ async function buildVariants(base, defVar) {
     variants.push({
       // Neu server khong tra SKU bien the rieng (vd.sku rong) thi dung SKU
       // san pham goc, KHONG tu che them hau to size — tranh tao ma ao.
-      sku: vd?.sku && String(vd.sku).trim() ? String(vd.sku).trim() : String(base.sku),
+      sku: vd?.sku && String(vd.sku).trim() ? String(vd.sku).trim() : String(productSku),
       size: sizeTxt, set_type: setTxt,
       price: { amount: price, currency: 'VND' },
       compare_at_price: { amount: compareAt ?? price, currency: 'VND' },
@@ -390,19 +753,26 @@ async function buildVariants(base, defVar) {
     pushVariant(defSetId, defSizeId, d);
     if (variants[0]) variants[0].stock = null;
   }
-  // Ngan sach goi variation: 8 -> 20 -> 26 (26 tu PR #18: buoc 2 thu het
-  // loai Bo/Ga nen can them luot goi, cong 2 luot cho vong vet combo o
-  // buoc 6a; full scan toi da them ~30 phut so voi muc 20, ~190 phut,
-  // van duoi timeout 240 phut cua workflow); sync tang dan chi cao lai
-  // san pham doi theo lastmod nen gan nhu khong them chi phi hang ngay.
+  // Ngan sach goi variation: 8 -> 20 -> 26 -> 32 (32 tu 26/11/2026:
+  // buoc 1 chi thu size chuan truoc + buoc 6b vet size le sau vong vet
+  // vo goi, can them luot cho san pham nhieu to hop nhu CPM27202
+  // (can ~31 luot de du het); 26 tu PR #18: buoc 2 thu het loai Bo/Ga
+  // + vong vet combo buoc 6a. Full scan 735 SP toi da them ~1-2 gio so
+  // voi muc 26 — vuot timeout 240 phut cua workflow neu chay 1 job
+  // (xem README goi PR: can chia full scan theo danh muc). Sync tang
+  // dan chi cao lai san pham doi theo lastmod nen gan nhu khong them
+  // chi phi hang ngay.
   // Can them bien the le (vo goi, chan...) vi to hop (loai x size) nhieu
   // gap doi ban cu, va can 1 lan goi rieng lay ton that bien the mac dinh.
-  const coverage = { calls: 0, valid_extra: 0, budget: 26, status: 'default_only', notes: [] };
-  if (!base.variationId || !colorId || !setGroup || !sizeGroup) {
-    coverage.notes.push('thieu variation id / nhom thuoc tinh — chi co gia mac dinh');
+  const coverage = { calls: 0, valid_extra: 0, budget: 40, status: 'default_only', notes: [] };
+  if (!base.variationId) {
+    coverage.notes.push('thieu variation id — chi co gia mac dinh');
     return { variants, coverage, defSel, colorId, defSetId, defSizeId };
   }
-  if (sizeGroup.options.length === 0) {
+  // SP khong co nhom Kich thuoc xu ly o nhanh rieng ben duoi (sau tryCombo),
+  // khong return som o day nua — xem "SP KHONG CO NHOM KICH THUOC".
+  if (singleSizeMode) coverage.notes.push('chi co nhom kich thuoc — quet size, nhan loai bo tu trang');
+  if (sizeGroup && sizeGroup.options.length === 0) {
     coverage.notes.push('nhom kich thuoc khong co lua chon nao — chi co gia mac dinh');
     coverage.status = variants.length > 1 ? 'partial' : 'default_only';
     return { variants, coverage, defSel, colorId, defSetId, defSizeId };
@@ -416,7 +786,11 @@ async function buildVariants(base, defVar) {
     await sleep(DELAY_MS);
     coverage.calls += 1;
     try {
-      const res = await callVariation(base.variationId, base.csrf, [colorId, setId, sizeId]);
+      // Goi du 1 id cho MOI nhom (attrsFor): nhom loai/size lay gia tri
+      // quet, nhom Mau lay colorId mac dinh, nhom phu lay mac dinh.
+      // Goi thua/thieu id gay xung dot, server tra ve mac dinh (xem
+      // ghi chu o tren: [661,664,64] -> mac dinh).
+      const res = await callVariation(base.variationId, base.csrf, attrsFor(setId, sizeId));
       if (res?.error) return null;
       const dd = res.data ?? null;
       if (!dd || !vPrice(dd)) return null;
@@ -433,15 +807,97 @@ async function buildVariants(base, defVar) {
       return null;
     }
   };
-  // 0) Ton THAT cua bien the mac dinh: goi ro to hop mac dinh. Server tra ve
-  // ban ghi bien the con (SKU rieng, stock rieng); chi lay stock, khong doi
-  // SKU (SKU mac dinh van la ma goc san pham). Neu server tra ve dung ban ghi
-  // goc (cung SKU) thi khong lay stock (tranh ghi nham stock tong).
+  // SP KHONG CO NHOM KICH THUOC (vd chan-ni-tre-em: chi co "Hoa tiet";
+  // bo-chan-tre-em: [Loai san pham, Mau sac]; dem-suoi-cacbon / KMTP115:
+  // khong co nhom nao): bien the = to hop cac truc con lai, size hien
+  // "Mot co". set_type = nhan cac truc ghep bang " · " (theo quy uoc
+  // mode dem: "<Loai> · <Chieu cao>"). Ban cu return som o day nen chi
+  // giu 1 bien the gia mac dinh voi set_type/size doan mo ("Bo ga chun
+  // chan", 160x200) — sai voi rem/khan/topper (kiem chung 26/11/2026).
+  // Nhanh nay chay truoc buoc 0-6 (la nhanh size); het nhanh thi return.
+  if (!sizeGroup) {
+    const NO_SIZE = 'Một cỡ';
+    const labelsOf = (combo) => groups.map((g, i) => labelOf(g, combo[i])).filter(Boolean).join(' · ');
+    const defaultCombo = groups.map((g) => groupDefaultId(g));
+    const pushNoSize = (combo, vd) => {
+      const setTxt = labelsOf(combo) || singleSetLabel || 'Sản phẩm';
+      const key = `${setTxt}|${NO_SIZE}`;
+      if (seen.has(key)) return false;
+      const price = vPrice(vd);
+      const compareAt = vCompare(vd);
+      if (!price) return false;
+      seen.add(key);
+      variants.push({
+        sku: vd?.sku && String(vd.sku).trim() ? String(vd.sku).trim() : String(productSku),
+        size: NO_SIZE, set_type: setTxt,
+        price: { amount: price, currency: 'VND' },
+        compare_at_price: { amount: compareAt ?? price, currency: 'VND' },
+        discount_percent: vDiscount(vd, price, compareAt),
+        status: 'active',
+        stock: vStock(vd),
+      });
+      return true;
+    };
+    // Bien the mac dinh (tu variation khong tham so). Ton de null: goi
+    // khong tham so tra ve stock TONG san pham, khong phai ton rieng —
+    // giong quy uoc o nhanh size ben duoi.
+    if (d && defPrice) {
+      if (pushNoSize(defaultCombo, d)) variants[variants.length - 1].stock = null;
+    }
+    // Quet to hop: tich Descartes cac truc (cap 12 to hop, trong ngan sach).
+    const axes = groups.map((g) => g.options.map((o) => o.id));
+    const combos = [];
+    const gen = (i, cur) => {
+      if (combos.length >= 12) return;
+      if (i === axes.length) { combos.push([...cur]); return; }
+      for (const id of axes[i]) {
+        cur.push(id); gen(i + 1, cur); cur.pop();
+        if (combos.length >= 12) return;
+      }
+    };
+    if (axes.length) gen(0, []);
+    for (const combo of combos) {
+      if (coverage.calls >= coverage.budget) break;
+      if (combo.every((id, i) => id === defaultCombo[i])) continue; // da co
+      await sleep(DELAY_MS);
+      coverage.calls += 1;
+      try {
+        const res = await callVariation(base.variationId, base.csrf, combo);
+        if (res?.error) continue;
+        const dd = res.data ?? null;
+        if (!dd || !vPrice(dd)) continue;
+        const sel = (dd.selected_attributes ?? []).map((a) => String(a.id));
+        const matches = combo.every((id) => sel.includes(String(id)));
+        const differs = (dd.sku && dd.sku !== defSku) || vPrice(dd) !== defPrice;
+        if (matches || differs) {
+          if (pushNoSize(combo, dd)) coverage.valid_extra += 1;
+        }
+      } catch (e) {
+        coverage.notes.push(`variation no-size ${combo.join('/')} loi: ${e.message}`);
+      }
+    }
+    coverage.status = variants.length >= 4 ? 'full' : variants.length > 1 ? 'partial' : 'default_only';
+    return { variants, coverage, defSel, colorId, defSetId, defSizeId };
+  }
+  // 0) Ton THAT + SKU THAT cua bien the mac dinh: goi ro to hop mac dinh.
+  // Server tra ve ban ghi bien the con (SKU rieng, stock rieng). Neu server
+  // tra ve dung ban ghi goc (cung SKU) thi khong lay stock (tranh ghi nham
+  // stock tong). Rieng SKU: goi khong tham so cua SP chan tra ve ma gia
+  // "EC-<ma SP>" (vd EC-EPM23063) thay vi SKU that cua bien the (vd
+  // ECH1822EPM23063 — kiem chung 26/11/2026, probe endpoint + test v2.2);
+  // neu SKU mac dinh la ma gia nay thi thay bang SKU that tu ban ghi ro
+  // to hop (khong ton them luot goi — dung chung lan goi lay stock).
   if (d && defPrice && defSetId && defSizeId && variants[0]) {
     const dd = await tryCombo(defSetId, defSizeId);
-    if (dd && dd.sku && String(dd.sku).trim() !== String(defSku)
-      && Number.isFinite(Number(dd.stock))) {
-      variants[0].stock = Math.trunc(Number(dd.stock));
+    if (dd && dd.sku && String(dd.sku).trim() !== String(defSku)) {
+      if (Number.isFinite(Number(dd.stock))) {
+        variants[0].stock = Math.trunc(Number(dd.stock));
+      }
+      const realSku = String(dd.sku).trim();
+      if (/^EC-/.test(String(defSku)) && !/^EC-/.test(realSku)) {
+        variants[0].sku = realSku;
+        coverage.notes.push(`sku mac dinh ${defSku} -> ${realSku} (ma gia EC-)`);
+      }
     }
   }
   const bedSizeIds = sizeGroup.options.filter((o) => isBedSize(o.txt))
@@ -450,15 +906,35 @@ async function buildVariants(base, defVar) {
     .sort((a, b) => smallSizeRank(a.txt) - smallSizeRank(b.txt)).map((o) => o.id);
   const defSetTxt = labelOf(setGroup, defSetId);
   // Size cung ho voi bo mac dinh: bo giuong -> size giuong, vo goi -> size nho.
-  const defFamilySizes = isPillowSet(defSetTxt) ? smallSizeIds : bedSizeIds;
-  const boGaSets = setGroup.options.filter((o) => o.id !== defSetId && /^(Bộ|Ga)/.test(o.txt));
-  const blanketSets = setGroup.options.filter((o) => o.id !== defSetId && /^(Vỏ chăn|Chăn)/.test(o.txt));
-  const pillowSets = setGroup.options.filter((o) => o.id !== defSetId && isPillowSet(o.txt));
-  const otherSets = setGroup.options.filter((o) => o.id !== defSetId
+  // SP chi co size nho (khan lau 30x30-60x50, khan mat 40x80/70x140...):
+  // bedSizeIds rong -> dung smallSizeIds, khong thi buoc 1 khong quet gi
+  // ca (hoi quy khan-lau-everon 26/11/2026: chi 1 bien the vi step 1 rong
+  // + mau khong bao gio quet).
+  const defFamilySizes = isPillowSet(defSetTxt) ? smallSizeIds : (bedSizeIds.length ? bedSizeIds : smallSizeIds);
+  const boGaSets = (setGroup?.options ?? []).filter((o) => o.id !== defSetId && /^(Bộ|Ga)/.test(o.txt));
+  const blanketSets = (setGroup?.options ?? []).filter((o) => o.id !== defSetId && /^(Vỏ chăn|Chăn)/.test(o.txt));
+  const pillowSets = (setGroup?.options ?? []).filter((o) => o.id !== defSetId && isPillowSet(o.txt));
+  const otherSets = (setGroup?.options ?? []).filter((o) => o.id !== defSetId
     && !/^(Bộ|Ga)/.test(o.txt) && !/^(Vỏ chăn|Chăn)/.test(o.txt) && !isPillowSet(o.txt));
-  // 1) Bo mac dinh: cac size con lai cung ho (toi da 2).
-  if (defSetId && defSizeId) {
-    for (const sz of defFamilySizes.filter((id) => id !== defSizeId).slice(0, 2)) {
+  // 1) Bo mac dinh: thu cac size CHUAN truoc (160/180/200 — BED_SIZE_ORDER);
+  // cac size le cua bo mac dinh (120/140/180x220/120x190/150x190) de
+  // lai buoc 6b SAU vong vet vo goi. Ly do (hoi quy 26/11/2026): ban
+  // truoc thu HET 7 size o buoc 1 (sua A: bo slice(0, 2) vi bo sot
+  // 140x200 cua KMS402/KMP407) nen CPM27202 can ngan sach o buoc 5
+  // (26 luot) va mat 3 bien the vo goi le (50x70/80x100/35x50).
+  // Tach doi giu duoc ca 2: size le van duoc thu (buoc 6b, ngan sach 32)
+  // ma khong chiem luot cua bien the le.
+  const isBedFamily = !isPillowSet(defSetTxt);
+  // Chi tach size le ra buoc 6b khi ho thuc su co size giuong; SP chi co
+  // size nho (khan...) thi thu het o buoc 1 (khong co gi de hoan lai).
+  const hasBedSizes = bedSizeIds.length > 0;
+  const step1Sizes = defFamilySizes.filter((id) => id !== defSizeId
+    && (!isBedFamily || !hasBedSizes || BED_SIZE_ORDER.includes(labelOf(sizeGroup, id))));
+  const deferredSizes = isBedFamily && hasBedSizes
+    ? defFamilySizes.filter((id) => id !== defSizeId && !BED_SIZE_ORDER.includes(labelOf(sizeGroup, id)))
+    : [];
+  if (defSizeId) {
+    for (const sz of step1Sizes) {
       await tryCombo(defSetId, sz);
       if (coverage.calls >= coverage.budget) break;
     }
@@ -485,10 +961,28 @@ async function buildVariants(base, defVar) {
       p3calls += 1;
     }
   }
-  // 4) Cac loai Vo chan / Chan khac: 1 lan goi o size mac dinh (toi da 2).
+  // 4) Cac loai Vo chan / Chan khac: thu toi da 3 size cho moi loai
+  // [size mac dinh, 160x200, 200x220], dung o size dau tien hop le
+  // (v2.2, 26/11/2026). Ly do: co loai chan chi ban o size khac size
+  // mac dinh — VD EPM23063 mac dinh 180x220 nhung Vo chan chi ban
+  // 160/180/200, Chan bon mua chi ban 200x220; chi thu o size mac dinh
+  // thi ca 2 loai deu khong bao gio vao validSets nen khong duoc mo
+  // rong size (gap giong EPT24084). Thu them chi ton luot khi size mac
+  // dinh khong hop le (dung ngay khi tim thay), nen SP binh thuong
+  // khong mat them luot nao. Budget 32 -> 40 de bu cho buoc 4b.
+  const blanketTrySizes = [defSizeId, ...bedSizeIds.filter((id) =>
+    ['160x200', '200x220'].includes(labelOf(sizeGroup, id)) && id !== defSizeId)];
+  const tryBlanketSet = async (setId) => {
+    for (const sz of blanketTrySizes) {
+      if (coverage.calls >= coverage.budget) break;
+      const dd = sz ? await tryCombo(setId, sz) : null;
+      if (dd) { validSets.push(setId); return true; }
+    }
+    return false;
+  };
   for (const st of blanketSets.slice(0, 2)) {
-    const dd = defSizeId ? await tryCombo(st.id, defSizeId) : null;
-    if (dd) validSets.push(st.id);
+    const found = await tryBlanketSet(st.id);
+    if (found) coverage.notes.push(`chan ${labelOf(setGroup, st.id)}: tim thay o size thu`);
     if (coverage.calls >= coverage.budget) break;
   }
   // 5) Cac loai Vo goi: thu tung loai voi size nho theo thu tu uu tien
@@ -505,6 +999,33 @@ async function buildVariants(base, defVar) {
     }
     if (found) coverage.notes.push(`vo goi ${labelOf(setGroup, st.id)}: tim thay o size nho`);
     if (coverage.calls >= coverage.budget) break;
+  }
+  // 4b) Mo rong size cho cac loai Vo chan / Chan da hop le (v2.2):
+  // buoc 4 chi thu toi da 3 size, cac size giuong con lai (chuan + le)
+  // thu o day, toi da 6 luot, duyet theo SIZE truoc (giong buoc 6a) de
+  // ca 2 loai deu duoc thu o co pho bien nhat. VD EPT24084: Chan he
+  // hop le o size mac dinh 200x220 nhung bien the 180x220
+  // (ECH1822EPT24084, 2.499.000d) chi tim thay o day; EPM23063: Vo
+  // chan tim thay o 160x200 (buoc 4) thi 180/200x220 tim thay o day.
+  // Dat SAU buoc 5 de khong chiem luot cua vong tim bien the vo goi le.
+  const validBlanketSets = validSets.filter((id) => {
+    const t = labelOf(setGroup, id);
+    return t && /^(Vỏ chăn|Chăn)/.test(t);
+  });
+  let p4bcalls = 0;
+  const restBedSizes = bedSizeIds.filter((id) => id !== defSizeId);
+  restBedSizes.sort((a, b) => {
+    const ao = BED_SIZE_ORDER.includes(labelOf(sizeGroup, a)) ? 0 : 1;
+    const bo = BED_SIZE_ORDER.includes(labelOf(sizeGroup, b)) ? 0 : 1;
+    return ao - bo;
+  });
+  for (const sz of restBedSizes) {
+    for (const setId of validBlanketSets) {
+      if (p4bcalls >= 6 || coverage.calls >= coverage.budget) break;
+      await tryCombo(setId, sz);
+      p4bcalls += 1;
+    }
+    if (p4bcalls >= 6 || coverage.calls >= coverage.budget) break;
   }
   // 6) Vet: cac loai con lai chua thu (loai la), cac size nho con lai cua
   // cac loai vo goi da hop le, va cac loai giuong chua thu — cho den khi
@@ -545,20 +1066,275 @@ async function buildVariants(base, defVar) {
     }
     if (coverage.calls >= coverage.budget) break;
   }
-  for (const st of [...boGaSets.slice(7), ...blanketSets.slice(2)]) {
+  // 6b) Cac size le con lai cua bo mac dinh (120/140/180x220/120x190/
+  // 150x190 — xem buoc 1): thu SAU vong vet vo goi de khong chiem ngan
+  // sach cua bien the le.
+  for (const sz of deferredSizes) {
+    if (coverage.calls >= coverage.budget) break;
+    await tryCombo(defSetId, sz);
+  }
+  for (const st of boGaSets.slice(7)) {
     if (coverage.calls >= coverage.budget) break;
     if (defSizeId) await tryCombo(st.id, defSizeId);
   }
+  // Loai chan thu 3 tro di: cung thu 3 size nhu buoc 4 (v2.2), khong
+  // chi thu o size mac dinh — VD EPM23063 co 3 loai chan, loai thu 3
+  // (Chan he) chi ban o 180x220 nhung neu mac dinh khac thi van can
+  // thu 160/200 de tim.
+  for (const st of blanketSets.slice(2)) {
+    if (coverage.calls >= coverage.budget) break;
+    await tryBlanketSet(st.id);
+  }
   coverage.status = variants.length >= 4 ? 'full' : variants.length > 1 ? 'partial' : 'default_only';
   return { variants, coverage, defSel, colorId, defSetId, defSizeId };
+}
+// ---------- Bien the cho DEM (mode 'mattress', them 24/11/2026) ----------
+// Dem co 3 truc thuoc tinh khac han bo chan ga: Loai/Mau dem (vd "Vo det
+// kim", "Ghi", "Gap 2 tam") x Chieu cao (vd "15 cm") x Kich thuoc
+// (vd "160x200"). Mo hinh bien the cua site chi co 2 truc (set_type x
+// size) nen gop Loai + Chieu cao vao set_type:
+//   - co nhom Loai/Mau: set_type = "<Loai> · <Chieu cao>" (vd "Vo det kim · 15 cm")
+//   - khong co nhom Loai/Mau: set_type = "Cao <Chieu cao>" (vd "Cao 15 cm")
+//   - size = Kich thuoc. Thu tu uu tien giong ban bo chan ga (P0-P6),
+//     ngan sach 20 lan goi. Diem khac: goi variation tra ve
+//     selected_attributes RONG voi goi ro to hop, nen chi kiem tra hop le
+//     bang "khac biet" (SKU khac hoac gia khac bien the mac dinh) — to hop
+//     nao gia bang gia mac dinh VA khong co SKU rieng se khong ghi duoc
+//     (gioi han da biet, giong ban cu).
+const slugToCode = (slug) => String(slug || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+// Anh thu vien tu variation response: slideImage (HTML) chua cac anh
+// -600x0.jpg cua chinh san pham. Dung khi anh tren trang khong loc duoc
+// theo slug (nhieu dem de anh o thu muc khac ten slug, vd
+// /upload/dem/lo-xo/pocket-pops/moi/ thay vi .../dem-lo-xo-pocket-pops-new/).
+const extractSlideImages = (slideHtml) => {
+  if (!slideHtml) return [];
+  const urls = [...new Set([...String(slideHtml).matchAll(/\/upload\/[^"'\\ ]+?-600x0\.jpg/g)].map((m) => m[0]))];
+  return urls.map((u) => `${BASE}${u}`);
+};
+// Bao hanh tu short_information cua variation mac dinh (vd "Bảo hành: 5 năm").
+const extractWarranty = (shortInfo) => {
+  if (!shortInfo) return null;
+  const t = String(shortInfo).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  const m = t.match(/Bảo hành:\s*([^.;]+)/);
+  return m ? m[1].trim() : null;
+};
+
+async function buildVariantsMattress(base, defVar, productSku) {
+  const d = defVar?.data ?? null;
+  const defPrice = vPrice(d);
+  const defSku = d?.sku || productSku;
+  const groups = base.groups;
+  const sizeGroup = groups.find((g) => /Kích thước/.test(g.title)) ?? null;
+  const heightGroup = groups.find((g) => /Chiều cao/.test(g.title)) ?? null;
+  const typeGroup = groups.find((g) => g !== sizeGroup && g !== heightGroup) ?? null;
+  const labelOf = (group, id) => group?.options.find((o) => o.id === String(id))?.txt ?? null;
+  const optById = (id) => {
+    for (const g of groups) {
+      const o = g.options.find((x) => x.id === String(id));
+      if (o) return { group: g, txt: o.txt };
+    }
+    return null;
+  };
+  const defSel = (d?.selected_attributes ?? []).map((a) => String(a.id));
+  const defSizeId = defSel.find((id) => sizeGroup?.options.some((o) => o.id === id))
+    ?? sizeGroup?.options.find((o) => o.checked)?.id ?? null;
+  const defHeightId = defSel.find((id) => heightGroup?.options.some((o) => o.id === id))
+    ?? heightGroup?.options.find((o) => o.checked)?.id ?? null;
+  const defTypeId = defSel.find((id) => typeGroup?.options.some((o) => o.id === id))
+    ?? typeGroup?.options.find((o) => o.checked)?.id ?? null;
+  const setTxtOf = (typeId, heightId) => {
+    const t = labelOf(typeGroup, typeId);
+    const h = labelOf(heightGroup, heightId);
+    if (t && h) return `${t} · ${h}`;
+    if (h) return `Cao ${h}`;
+    if (t) return t;
+    return null;
+  };
+  const variants = [];
+  const seen = new Set();
+  const pushVariant = (setTxt, sizeTxt, vd) => {
+    if (!setTxt || !sizeTxt) return false;
+    const key = `${setTxt}|${sizeTxt}`;
+    if (seen.has(key)) return false;
+    const price = vPrice(vd);
+    const compareAt = vCompare(vd);
+    if (!price) return false;
+    seen.add(key);
+    variants.push({
+      // Neu server khong tra SKU bien the rieng (vd.sku rong) thi dung SKU
+      // san pham (productSku — ma suy tu slug doi voi Dem), KHONG dung
+      // base.sku (co the null -> String(null) = "null").
+      sku: vd?.sku && String(vd.sku).trim() ? String(vd.sku).trim() : String(productSku),
+      size: sizeTxt, set_type: setTxt,
+      price: { amount: price, currency: 'VND' },
+      compare_at_price: { amount: compareAt ?? price, currency: 'VND' },
+      discount_percent: vDiscount(vd, price, compareAt),
+      status: 'active',
+      stock: vStock(vd),
+    });
+    return true;
+  };
+  const defSetTxt = setTxtOf(defTypeId, defHeightId);
+  const defSizeTxt = labelOf(sizeGroup, defSizeId);
+  if (d && defPrice) {
+    pushVariant(defSetTxt, defSizeTxt, d);
+    if (variants[0]) variants[0].stock = null; // stock goi mac dinh la TONG, khong dung
+  }
+  // Ngan sach goi variation: 28 (cao hon ban bo chan ga 20 vi Dem co 3
+  // truc thuoc tinh -> nhieu to hop hon: 2 loai x 3 chieu cao x 7 size =
+  // 42 to hop toi da. Chi 13 san pham Dem nen them ~3 phut cho full scan,
+  // khong anh huong timeout 240 phut cua workflow).
+  const coverage = { calls: 0, valid_extra: 0, budget: 28, status: 'default_only', notes: [] };
+  if (!base.variationId || !sizeGroup || !heightGroup) {
+    coverage.notes.push('thieu variation id / nhom kich thuoc / nhom chieu cao — chi co gia mac dinh');
+    return { variants, coverage, defSel, defTypeId, defHeightId, defSizeId, defSetTxt, defSizeTxt };
+  }
+  if (sizeGroup.options.length === 0 || heightGroup.options.length === 0) {
+    coverage.notes.push('nhom kich thuoc/chieu cao khong co lua chon — chi co gia mac dinh');
+    coverage.status = variants.length > 1 ? 'partial' : 'default_only';
+    return { variants, coverage, defSel, defTypeId, defHeightId, defSizeId, defSetTxt, defSizeTxt };
+  }
+  const tried = new Set();
+  const tryCombo = async (attrIds, setTxt, sizeTxt) => {
+    const tkey = attrIds.join('|');
+    if (tried.has(tkey)) return null;
+    tried.add(tkey);
+    if (coverage.calls >= coverage.budget) return null;
+    await sleep(DELAY_MS);
+    coverage.calls += 1;
+    try {
+      const res = await callVariation(base.variationId, base.csrf, attrIds);
+      if (res?.error) return null;
+      const dd = res.data ?? null;
+      if (!dd || !vPrice(dd)) return null;
+      // Goi ro to hop tra ve selected_attributes rong — chi biet hop le
+      // khi SKU khac SKU mac dinh hoac gia khac gia mac dinh.
+      const differs = (dd.sku && dd.sku !== defSku) || vPrice(dd) !== defPrice;
+      if (differs) {
+        if (pushVariant(setTxt, sizeTxt, dd)) coverage.valid_extra += 1;
+        return dd;
+      }
+      return null; // server tra ve bien the mac dinh -> to hop khong hop le
+    } catch (e) {
+      coverage.notes.push(`variation ${attrIds.join('/')} loi: ${e.message}`);
+      return null;
+    }
+  };
+  const comboIds = (typeId, heightId, sizeId) => [typeId, heightId, sizeId].filter((x) => x != null);
+  // 0) Ton THAT cua bien the mac dinh: goi ro to hop mac dinh, chi lay
+  // stock khi SKU tra ve la SKU con khac SKU goc (tranh ghi nham tong).
+  if (d && defPrice && defSizeId && defHeightId && variants[0]) {
+    const dd = await tryCombo(comboIds(defTypeId, defHeightId, defSizeId), defSetTxt, defSizeTxt);
+    if (dd && dd.sku && String(dd.sku).trim() !== String(defSku)
+      && Number.isFinite(Number(dd.stock))) {
+      variants[0].stock = Math.trunc(Number(dd.stock));
+    }
+  }
+  const sizeIds = sizeGroup.options
+    .sort((a, b) => bedSizeRank(a.txt) - bedSizeRank(b.txt)).map((o) => o.id);
+  const heightIds = heightGroup.options.map((o) => o.id);
+  const typeIds = typeGroup ? typeGroup.options.map((o) => o.id) : [];
+  // Tat ca to hop (loai, chieu cao): khi khong co nhom Loai thi loai = null
+  // (chi co chieu cao). Dung cho P6a/P6c — khong duoc duyet theo typeIds
+  // vi typeIds RONG khi khong co nhom Loai, lam P6a/P6c khong chay (loi
+  // da gap o lux-everon: Cao 18cm khong bao gio duoc quet o size khac).
+  const allSetKeys = [];
+  if (typeIds.length) { for (const t of typeIds) for (const h of heightIds) allSetKeys.push([t, h]); }
+  else { for (const h of heightIds) allSetKeys.push([null, h]); }
+  const validSets = [];
+  // 1) Bo mac dinh: cac size con lai (toi da 2).
+  if (defSizeId) {
+    for (const sz of sizeIds.filter((id) => id !== defSizeId).slice(0, 2)) {
+      await tryCombo(comboIds(defTypeId, defHeightId, sz), defSetTxt, labelOf(sizeGroup, sz));
+      if (coverage.calls >= coverage.budget) break;
+    }
+  }
+  // 2) Cac loai/chieu cao khac: 1 lan goi o size mac dinh (toi da 6).
+  const otherSets = [];
+  for (const t of typeIds.filter((id) => id !== defTypeId).slice(0, 3)) {
+    otherSets.push([t, defHeightId]);
+  }
+  for (const h of heightIds.filter((id) => id !== defHeightId).slice(0, 3)) {
+    otherSets.push([defTypeId, h]);
+  }
+  for (const [t, h] of otherSets.slice(0, 6)) {
+    const st = setTxtOf(t, h);
+    const dd = defSizeId ? await tryCombo(comboIds(t, h, defSizeId), st, defSizeTxt) : null;
+    if (dd) validSets.push(st);
+    if (coverage.calls >= coverage.budget) break;
+  }
+  // 3) Them size cho cac bo vua thay hop le (toi da 3 lan goi).
+  let p3calls = 0;
+  for (const st of validSets) {
+    if (p3calls >= 3) break;
+    // Tim lai type/height cua set hop le qua nhan (setTxt -> ids).
+    const entry = [...otherSets].find(([t, h]) => setTxtOf(t, h) === st);
+    if (!entry) continue;
+    for (const sz of sizeIds.filter((id) => id !== defSizeId)) {
+      if (p3calls >= 3 || coverage.calls >= coverage.budget) break;
+      await tryCombo(comboIds(entry[0], entry[1], sz), st, labelOf(sizeGroup, sz));
+      p3calls += 1;
+    }
+  }
+  // 6) Vet: (a) cac to hop loai x chieu cao con lai o size mac dinh;
+  // (b) cac size con lai cua cac bo hop le VA bo mac dinh — bo mac dinh
+  // cung phai duoc vet het size (neu khong, P1 chi lay 2 size dau thi cac
+  // size nho 120x190/150x190 cua bo mac dinh se mat); (c) cac size con
+  // lai cua cac bo CHUA hop le o size mac dinh — vi co bo chi hop le o
+  // size khac mac dinh (kiem chung live 24/11/2026: Vỏ gấm · 15 cm cua
+  // dem-bong-ep-artemis chi co o 180x200 (8.660.000d, SKU ADM218215S07),
+  // khong co o 160x200; Trắng · 15 cm cua dem-cao-su-everon chi co o
+  // 180x200/120x200/140x200, khong co o 160x200 — neu khong quet buoc
+  // nay thi mat 2 + 3 bien the that). Cho den khi het ngan sach.
+  for (const [t, h] of allSetKeys) {
+    if (coverage.calls >= coverage.budget) break;
+    if (t === defTypeId && h === defHeightId) continue;
+    const st = setTxtOf(t, h);
+    if (validSets.includes(st)) continue;
+    if (defSizeId) await tryCombo(comboIds(t, h, defSizeId), st, defSizeTxt);
+  }
+  const sweepSets = [];
+  const seenSets = new Set();
+  for (const st of [defSetTxt, ...validSets]) {
+    if (st && !seenSets.has(st)) { seenSets.add(st); sweepSets.push(st); }
+  }
+  for (const st of sweepSets) {
+    const entry = [...otherSets, [defTypeId, defHeightId]].find(([t, h]) => setTxtOf(t, h) === st);
+    if (!entry) continue;
+    for (const sz of sizeIds) {
+      if (coverage.calls >= coverage.budget) break;
+      await tryCombo(comboIds(entry[0], entry[1], sz), st, labelOf(sizeGroup, sz));
+    }
+    if (coverage.calls >= coverage.budget) break;
+  }
+  // (c) Bo chua hop le: quet het size (tru size mac dinh da thu o (a)).
+  for (const [t, h] of allSetKeys) {
+    if (coverage.calls >= coverage.budget) break;
+    const st = setTxtOf(t, h);
+    if (seenSets.has(st)) continue;
+    for (const sz of sizeIds) {
+      if (coverage.calls >= coverage.budget) break;
+      if (sz === defSizeId) continue; // da thu o (a)
+      await tryCombo(comboIds(t, h, sz), st, labelOf(sizeGroup, sz));
+    }
+  }
+  // Trang thai bao phu: 'full' khi moi to hop co the da duoc thu (vd foam
+  // chi co 1 bo x 3 size = 3 to hop, thu ca 3 thi la full du chi co 3 bien
+  // the); 'partial' khi ngan sach het truoc khi thu het (vd bong-ep-everon
+  // 42 to hop, ngan sach 28 — co the con bien the chua biet).
+  const possibleCombos = (typeIds.length || 1) * heightIds.length * sizeIds.length;
+  coverage.possible_combos = possibleCombos;
+  coverage.tried_combos = tried.size;
+  coverage.status = tried.size >= possibleCombos ? 'full' : variants.length > 1 ? 'partial' : 'default_only';
+  return { variants, coverage, defSel, defTypeId, defHeightId, defSizeId, defSetTxt, defSizeTxt };
 }
 // ---------- Main ----------
 async function main() {
   mkdirSync(`${ROOT}/data`, { recursive: true });
   let discovery;
-  if (SKIP_DISCOVERY && existsSync(`${ROOT}/data/discovery.json`)) {
-    discovery = JSON.parse(readFileSync(`${ROOT}/data/discovery.json`, 'utf8'));
-    console.log(`[discovery] Dung lai discovery.json: ${discovery.urls.length} URL danh muc`);
+  if (SKIP_DISCOVERY && existsSync(`${ROOT}/${DISCOVERY_FILE}`)) {
+    discovery = JSON.parse(readFileSync(`${ROOT}/${DISCOVERY_FILE}`, 'utf8'));
+    console.log(`[discovery] Dung lai ${DISCOVERY_FILE}: ${discovery.urls.length} URL danh muc`);
   } else {
     discovery = await discover();
   }
@@ -666,18 +1442,45 @@ async function main() {
       const price = varPrice ?? pagePrice;
       const compareAt = varCompare ?? base.compareAt ?? price;
       const discount = d ? vDiscount(d, price, compareAt) : base.discount;
-      // SKU san pham lay tu trang (coreSku), KHONG lay data.sku cua variation
-      // (do la SKU bien the). Chi dung variation lam du phong khi trang khong co.
-      const sku = base.sku ?? coreSku(d?.sku) ?? coreSku(base.skuOnPage)
-        ?? (d?.sku && /^[A-Z0-9]{3,}$/.test(String(d.sku).trim()) ? String(d.sku).trim().toUpperCase() : null);
+      // SKU san pham:
+      // - Bo chan ga: lay tu trang (coreSku), KHONG lay data.sku cua variation
+      //   (do la SKU cua bien the). Chi dung variation lam du phong khi trang
+      //   khong co.
+      // - Dem: nguon KHONG co ma san pham chuan (ma .sku tren trang la ma
+      //   bien the, ma hoa ca kich thuoc/chieu cao — vd EDM316209LUX; co
+      //   san pham khong co .sku). Dung ma suy tu slug (on dinh theo URL,
+      //   duy nhat toan catalog): vd dem-bong-ep-everon -> DEMBONGEPEVERON.
+      //   Bien the van giu SKU that tu endpoint (vd.sku).
+      // SKU PIN (data/sku-pins.json) thang truoc ca .sku: mot so .sku
+      // khong on dinh giua cac lan cao (khan...), pin giu ma co dinh.
+      const pinnedSku = CAT.mode === 'mattress' ? null : (SKU_PINS[base.slug || slugGuess] ?? null);
+      const sku = CAT.mode === 'mattress'
+        ? slugToCode(base.slug || slugGuess)
+        : pinnedSku ?? base.sku ?? coreSku(d?.sku) ?? coreSku(base.skuOnPage)
+          ?? (d?.sku && /^[A-Z0-9]{3,}$/.test(String(d.sku).trim()) ? String(d.sku).trim().toUpperCase() : null);
       const name = (d?.name && d.name !== sku ? d.name : null) ?? (base.nameFromTitle || sku);
       if (!sku) { skipped.push({ url, reason: 'khong xac dinh duoc SKU' }); console.log(`[skip] ${url}: khong xac dinh duoc SKU`); continue; }
       if (done.has(sku)) { console.log(`[trung-sku] ${sku}`); continue; }
-      const { variants, coverage } = await buildVariants(base, defVar);
+      const buildRes = CAT.mode === 'mattress'
+        ? await buildVariantsMattress(base, defVar, sku)
+        : await buildVariants(base, defVar, sku);
+      const { variants, coverage } = buildRes;
+      // Loai dem (tu danh muc con nguon: lo-xo / bong-ep / cao-su / foam).
+      const mattressType = CAT.mode === 'mattress'
+        ? (discovery.sub_type_by_url?.[url] ?? null) : null;
+      const warranty = CAT.mode === 'mattress' ? extractWarranty(d?.short_information) : null;
       // Bien the mac dinh neu variation khong tra ve: dung gia trang.
       if (variants.length === 0 && price) {
+        // Nhan loai bo mac dinh: suy tu TEN san pham, khong doan "Bo ga
+        // chun chan" (sai voi rem/khan/topper — xem singleSetLabel).
+        const fbSet = CAT.mode === 'mattress'
+          ? (buildRes.defSetTxt ?? 'Đệm')
+          : (KNOWN_SET_TYPES.find((st) => base.nameFromTitle?.includes(st)) ?? 'Sản phẩm');
+        const fbSize = CAT.mode === 'mattress'
+          ? (buildRes.defSizeTxt ?? '160x200')
+          : '160x200';
         variants.push({
-          sku: `${sku}-160`, size: '160x200', set_type: 'Bộ ga chun chần',
+          sku: `${sku}-160`, size: fbSize, set_type: fbSet,
           price: { amount: price, currency: 'VND' },
           compare_at_price: { amount: compareAt ?? price, currency: 'VND' },
           discount_percent: discount ?? 0, status: 'active', stock: null,
@@ -685,26 +1488,54 @@ async function main() {
         coverage.status = 'default_only';
         coverage.notes.push('variation khong tra ve bien the — dung gia mac dinh tu trang');
       }
+      // set_types cho dem: nhan Loai/Mau dem (vd "Vo det kim", "Gap 2 tam");
+      // neu khong co nhom Loai/Mau thi dung ten loai dem (vd "Dem bong ep").
+      let setTypes = base.setTypes;
+      if (CAT.mode === 'mattress') {
+        const typeLabels = [...new Set(variants.map((v) => String(v.set_type).split(' · ')[0]))];
+        setTypes = typeLabels.length ? typeLabels : (mattressType ? [`Đệm ${{ 'lo-xo': 'lò xo', 'bong-ep': 'bông ép', 'cao-su': 'cao su', 'foam': 'foam' }[mattressType] ?? mattressType}`] : []);
+      }
       /* Lấy TOÀN BỘ ảnh trong thư viện của trang nguồn (trước đây giới hạn
          3 ảnh nên nhiều sản phẩm chỉ có 1–3 ảnh trong khi nguồn có tới
          14 ảnh). Ảnh mô tả trong nội dung (mo-ta-*) không khớp mẫu
-         -600x0.jpg nên không lọt vào đây. */
-      const media = base.images.map((src, i) => ({
+         -600x0.jpg nên không lọt vào đây. Riêng Đệm: nhiều sản phẩm để
+         ảnh ở thư mục khác tên slug nên lọc theo slug không bắt được —
+         lấy thêm từ slideImage của variation mặc định (chứa đủ ảnh
+         -600x0.jpg của sản phẩm). */
+      let pageImages = base.images;
+      if (CAT.mode === 'mattress' && pageImages.length === 0) {
+        pageImages = extractSlideImages(d?.slideImage);
+        if (pageImages.length) coverage.notes.push(`anh lay tu slideImage: ${pageImages.length} anh`);
+      }
+      // id/thu muc anh = sku viet thuong, sanitize ve [a-z0-9-] cho khop
+      // SRC_RE cua validate (SKU pin co "_" nhu EKDNANGSTK4040_S2 se
+      // lam hong src neu giu nguyen — SKU goc giu nguyen, chi doi id).
+      const pid = String(sku).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+      const media = pageImages.map((src, i) => ({
         type: 'image', role: i === 0 ? 'cover' : 'gallery',
-        src: `assets/img/products/${String(sku).toLowerCase()}/${i === 0 ? 'cover' : `img-${i + 1}`}.webp`,
-        source_url: src, alt: `Bộ chăn ga ${name} - ${sku}`, width: 600, height: null,
+        src: `assets/img/products/${pid}/${i === 0 ? 'cover' : `img-${i + 1}`}.webp`,
+        source_url: src, alt: `${CAT.alt_prefix} ${name} - ${sku}`, width: 600, height: null,
       }));
       if (media.length === 0 && d?.image) {
-        media.push({ type: 'image', role: 'cover', src: `assets/img/products/${String(sku).toLowerCase()}/cover.webp`, source_url: `${BASE}${d.image}`, alt: `Bộ chăn ga ${name} - ${sku}`, width: 540, height: 600 });
+        media.push({ type: 'image', role: 'cover', src: `assets/img/products/${pid}/cover.webp`, source_url: `${BASE}${d.image}`, alt: `${CAT.alt_prefix} ${name} - ${sku}`, width: 540, height: 600 });
       }
+      // Trang thai het hang: uu tien ton kho that cua bien the (neu biet)
+      // thay vi chi dung co "Het hang" tren trang + stock TONG cua goi
+      // mac dinh (tong co the sai — xem muc 2.2 README goi PR muc 8).
+      const anyInStock = variants.some((v) => (v.stock ?? 0) > 0);
+      const allKnownZero = variants.length > 0 && variants.every((v) => v.stock === 0);
+      const outOfStock = anyInStock ? false : (allKnownZero || base.outOfStock);
       const product = {
-        id: String(sku).toLowerCase(), sku, slug: base.slug || slugify(name, sku), name,
-        category_ids: ['bo-chan-ga'], collection_ids: base.collections,
+        id: pid, sku, slug: base.slug || slugify(name, sku), name,
+        category_ids: [CAT.id], collection_ids: base.collections,
         description: (d?.short_description || null) ?? base.desc,
         attributes: {
           material: base.material, colors: base.colors,
           pattern: base.pattern, pattern_type: base.patternType, origin: base.origin,
-          set_types: base.setTypes,
+          set_types: setTypes,
+          ...(mattressType ? { mattress_type: mattressType } : {}),
+          ...((!mattressType && discovery.sub_type_by_url?.[url]) ? { sub_type: discovery.sub_type_by_url[url] } : {}),
+          ...(warranty ? { warranty } : {}),
         },
         variants, media,
         price: price ? { amount: price, currency: 'VND' } : null,
@@ -713,7 +1544,7 @@ async function main() {
         local_override: null,
         source: { site: 'everon.com', url, updated_at: new Date().toISOString().slice(0, 10) },
         synced_at: new Date().toISOString(),
-        status: (base.outOfStock || (d && Number(d.stock) === 0)) ? 'out_of_stock' : 'active',
+        status: outOfStock ? 'out_of_stock' : 'active',
       };
       const errors = [];
       if (!sku) errors.push('thieu SKU');
@@ -730,7 +1561,7 @@ async function main() {
           console.log(`[gia-doi] ${sku}: ${oldPrice} -> ${price}`);
         }
       }
-      coverageStats.push({ sku, name, variants: variants.length, price_table_status: coverage.status, variation_calls: coverage.calls, notes: coverage.notes });
+      coverageStats.push({ sku, name, variants: variants.length, price_table_status: coverage.status, variation_calls: coverage.calls, tried_combos: coverage.tried_combos ?? null, possible_combos: coverage.possible_combos ?? null, notes: coverage.notes });
       done.set(sku, product);
       jsonlLines.push(JSON.stringify(product));
       saveCheckpoint([...done.values()]);
@@ -753,8 +1584,8 @@ async function main() {
   products.sort((a, b) => (orderIdx.get(a.source?.url) ?? 1e9) - (orderIdx.get(b.source?.url) ?? 1e9));
   const out = {
     schema_version: 1,
-    category: { id: 'bo-chan-ga', name: 'Bộ chăn ga', product_count_on_source: discovery.category_count_on_source, source_url: CATEGORY_URL },
-    source: { site: 'everon.com', category_url: CATEGORY_URL, sitemap_url: SITEMAP_URL, crawled_at: new Date().toISOString() },
+    category: { id: CAT.id, name: CAT.name, product_count_on_source: discovery.category_count_on_source, source_url: CAT.source_url },
+    source: { site: 'everon.com', category_url: CAT.source_url, category_urls: CAT.urls, sitemap_url: SITEMAP_URL, crawled_at: new Date().toISOString() },
     synced_at: new Date().toISOString(),
     count: products.length,
     products,
@@ -782,7 +1613,7 @@ async function main() {
     skipped_list: skipped,
     coverage: coverageStats,
   };
-  writeFileSync(`${ROOT}/data/run-stats.json`, JSON.stringify(stats, null, 2) + '\n', 'utf8');
+  writeFileSync(`${ROOT}/${RUN_STATS_FILE}`, JSON.stringify(stats, null, 2) + '\n', 'utf8');
   console.log(`[xong] Thanh cong ${products.length}/${urls.length}, bo qua ${skipped.length}. Ghi -> ${OUT}`);
 }
 

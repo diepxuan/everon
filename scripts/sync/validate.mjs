@@ -10,7 +10,17 @@
 //   hoặc có giá = 0 (gia <= 0 da la loi rieng tung san pham).
 // Loi (fail) -> exit 1. Canh bao (warning: thieu chat lieu/mau) chi liet ke,
 // khong fail — vi nguon that su khong co truong do.
+//
+// DA DANH MỤC (sửa 26/11/2026 — toàn bộ catalog): kiểm tra category.id phải là
+// 1 trong 12 danh mục đã biết; mỗi sản phẩm phải có category_ids chứa ít
+// nhất 1 danh mục đã biết (không bắt buộc bo-chan-ga nữa).
+// LƯU Ý safety gate: --prev chỉ dùng khi validate products.json ĐÃ GỘP
+// (tổng số), KHÔNG dùng khi validate 1 wrapper danh mục riêng (13 SP Đệm
+// so với 189 SP cũ sẽ kích gate oan). Workflow chạy: validate từng
+// wrapper (không --prev) -> export gộp -> validate products.json --prev.
 import { readFileSync, existsSync } from 'node:fs';
+
+const KNOWN_CATEGORIES = new Set(['bo-chan-ga', 'dem', 'dem-k-bedding', 'k-bedding', 'tre-em', 'bo-chan-ga-artemis', 'ga', 'vo-goi', 'chan-va-vo-chan', 'ruot', 'goi', 'phu-kien']); // mo 26/11/2026: toan bo catalog (12 danh muc)
 
 const argv = process.argv.slice(2);
 const file = argv.find((a) => !a.startsWith('--')) ?? 'data/products-bo-chan-ga.full.json';
@@ -37,7 +47,7 @@ const SRC_RE = /^assets\/img\/products\/[a-z0-9-]+\/(cover|img-\d+)\.(webp|jpg|j
 
 if (!Array.isArray(raw) && raw.schema_version !== 1) errors.push('schema_version phai la 1');
 if (!Array.isArray(products) || products.length === 0) errors.push('khong co san pham nao');
-if (!Array.isArray(raw) && raw.category?.id && raw.category.id !== 'bo-chan-ga') errors.push('category.id khong phai bo-chan-ga');
+if (!Array.isArray(raw) && raw.category?.id && !KNOWN_CATEGORIES.has(raw.category.id)) errors.push(`category.id khong biet: ${raw.category.id}`);
 if (!Array.isArray(raw) && raw.count !== undefined && raw.count !== products.length) {
   errors.push(`count khai bao ${raw.count} khac so san pham thuc ${products.length}`);
 }
@@ -53,7 +63,13 @@ for (const p of products) {
   if (p.compare_at_price && p.compare_at_price.amount < p.price?.amount) errors.push(`${tag}: gia goc nho hon gia ban`);
   if (!(p.discount_percent >= 0 && p.discount_percent <= 100)) errors.push(`${tag}: discount_percent ngoai 0-100`);
   if (p.local_override !== null && p.local_override !== undefined) errors.push(`${tag}: local_override phai null (da chot dung gia everon.com)`);
-  if (!Array.isArray(p.category_ids) || !p.category_ids.includes('bo-chan-ga')) errors.push(`${tag}: category_ids thieu bo-chan-ga`);
+  if (!Array.isArray(p.category_ids) || !p.category_ids.length) errors.push(`${tag}: category_ids rong`);
+  else if (!p.category_ids.some((c) => KNOWN_CATEGORIES.has(c))) errors.push(`${tag}: category_ids khong co danh muc nao da biet (${p.category_ids.join(',')})`);
+  if (!Array.isArray(raw) && raw.category?.id && !p.category_ids.includes(raw.category.id)) errors.push(`${tag}: category_ids thieu danh muc cua wrapper (${raw.category.id})`);
+  if (p.category_ids?.includes('dem')) {
+    if (!p.attributes?.mattress_type) warnings.push(`${tag}: thieu mattress_type (loai dem)`);
+    if (!p.attributes?.warranty) warnings.push(`${tag}: thieu bao hanh (nguon khong ghi hoac chua lay duoc)`);
+  }
   if (!Array.isArray(p.variants) || p.variants.length === 0) errors.push(`${tag}: khong co bien the nao`);
   else for (const v of p.variants) {
     if (!v.size || !v.set_type) errors.push(`${tag}: bien the thieu size/set_type`);
@@ -75,9 +91,12 @@ for (const p of products) {
   if (p.status === 'out_of_stock') warnings.push(`${tag}: het hang (bien the mac dinh stock 0 hoac trang bao Het hang)`);
 }
 
+const byCategory = {};
+for (const p of products) for (const c of p.category_ids ?? []) byCategory[c] = (byCategory[c] ?? 0) + 1;
 const summary = {
   file, products: products.length,
   variants: products.reduce((a, p) => a + (p.variants?.length ?? 0), 0),
+  by_category: byCategory,
   errors: errors.length, warnings: warnings.length,
   error_list: errors, warning_list: warnings,
 };
