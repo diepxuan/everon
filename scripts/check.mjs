@@ -55,7 +55,21 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
   check("menu: có mục Sản phẩm và Bộ sưu tập: " + rel, src.includes('id="nav-san-pham"') && src.includes('id="nav-bo-suu-tap"'));
   check("menu: link Sản phẩm tới bo-chan-ga/: " + rel, src.includes('href="' + prefix + 'bo-chan-ga/" class="nav-link" id="nav-san-pham"'));
   check("menu: 3 link Bộ sưu tập ?collection=: " + rel, ["everon-2027", "bst-chan-ga-2022", "bst-cutie-2027"].every((c) => src.includes('href="' + prefix + 'bo-chan-ga/?collection=' + c + '"')));
+  check("drawer: có backdrop + đầu drawer (logo + nút ✕) + nút Gọi showroom cuối drawer: " + rel, src.includes('id="nav-backdrop"') && src.includes('id="nav-close"') && src.includes('class="drawer-call"'));
 }
+const cssSrc = readFileSync(join(root, "assets/css/style.css"), "utf8");
+check("drawer: CSS có panel trượt từ phải (translateX + 100dvh + min(320px, 85vw))", cssSrc.includes("translateX(102%)") && cssSrc.includes("100dvh") && cssSrc.includes("min(320px, 85vw)"));
+check("drawer: CSS có backdrop mờ rgba(0, 0, 0, .5)", cssSrc.includes("rgba(0, 0, 0, .5)"));
+check("drawer: header 1 hàng mobile (brand co + tagline … + ẩn dưới 400px)", cssSrc.includes("text-overflow: ellipsis") && cssSrc.includes("@media (max-width: 400px)"));
+check("menu mobile: active nhẹ vạch vàng, không pill xám", cssSrc.includes("box-shadow: inset 3px 0 0 var(--gold)"));
+check("menu mobile: tag Sắp có không nền pill (background: transparent)", cssSrc.includes(".tag-soon { background: transparent;"));
+check("menu mobile: dấu ▾ xoay khi mở (rotate 180deg)", cssSrc.includes("rotate(180deg)"));
+/* Căn hàng dọc menu desktop (fix 2026-11-26): 2 mục dropdown từng cao
+   hơn 3 mục thường 7.24px (đo Chromium: tâm dọc 24.95 so với 32.19)
+   vì link trong .nav-item là inline nên padding dọc không nở line box. */
+check("menu desktop: .nav-item thành flex căn giữa trong @media (min-width: 721px)", /@media \(min-width: 721px\) \{\s*\.nav-item \{ display: flex; align-items: center; \}/.test(cssSrc));
+check("menu desktop: .nav-link inline-flex căn giữa mũi tên ▾ với chữ", cssSrc.includes(".nav-link { display: inline-flex; align-items: center; }"));
+check("menu mobile: chỉ duy nhất 1 chỗ .nav-item display:flex (không lọt vào block ≤720px, dropdown vẫn static)", (cssSrc.match(/\.nav-item \{ display: flex/g) || []).length === 1);
 const indexSrc = readFileSync(join(root, "index.html"), "utf8");
 check("menu: trang chủ không còn mục Danh mục sản phẩm", !indexSrc.includes("cat-title") && !indexSrc.includes("category-grid"));
 check("menu: trang chủ giữ Trang chủ active", indexSrc.includes('href="index.html" class="active"'));
@@ -158,13 +172,13 @@ class MiniElement {
 }
 MiniElement.registry = {};
 
-function makeEnv({ page, search, hover }) {
+function makeEnv({ page, search, hover, mobile }) {
   MiniElement.registry = {};
   const byId = {};
   const doc = {
     readyState: "loading",
     title: "",
-    body: { getAttribute: (k) => (k === "data-page" ? page : null) },
+    body: { getAttribute: (k) => (k === "data-page" ? page : null), style: {} },
     _domHandlers: {},
     addEventListener(t, fn) { (this._domHandlers[t] = this._domHandlers[t] || []).push(fn); },
     getElementById(id) { return (byId[id] = byId[id] || MiniElement.registry[id] || new MiniElement("div")); },
@@ -179,11 +193,12 @@ function makeEnv({ page, search, hover }) {
     location: { search: search || "", pathname: page === "category" ? "/bo-chan-ga/" : "/" }
   };
   sandbox.window = sandbox;
+  sandbox.innerWidth = mobile ? 390 : 1280;
   sandbox.window.__ROOT__ = page === "category" ? "../" : "./";
   sandbox.window.__DATA_BASE__ = page === "category" ? "../data/" : "data/";
   /* Giả lập thiết bị: mặc định là cảm ứng (không hover) để kiểm tra
      bấm mở menu; truyền hover: true để giả lập desktop có chuột. */
-  sandbox.matchMedia = (q) => ({ matches: hover === true && q === "(hover: hover)", media: q, addListener() {}, removeListener() {} });
+  sandbox.matchMedia = (q) => ({ matches: (hover === true && q === "(hover: hover)") || (mobile === true && q === "(max-width: 720px)"), media: q, addListener() {}, removeListener() {} });
   sandbox.fetch = async (url) => {
     const rel = String(url).replace(/^(\.\.\/)+/, "");
     const text = readFileSync(join(root, rel), "utf8");
@@ -223,13 +238,26 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   prodLink.dispatch("click", ev);
   (doc._domHandlers.keydown || []).forEach((fn) => fn({ key: "Escape" }));
   check("menu: bấm Esc đóng dropdown", !prodLink.classList.contains("open"));
-  /* Nút hamburger mở / đóng panel dọc. */
+  /* Drawer: mặc định đóng; hamburger mở/đóng; nút ☰ thành ✕ khi mở;
+     bấm backdrop / nút ✕ / Esc đóng; mở thì khoá cuộn body. */
   const navToggle = byId["nav-toggle"];
   const mainNav = byId["main-nav"];
+  const backdrop = byId["nav-backdrop"];
+  check("drawer: mặc định đóng (nav + backdrop không có open)", !mainNav.classList.contains("open") && !backdrop.classList.contains("open"));
   navToggle.dispatch("click", { target: navToggle });
-  check("menu: hamburger mở panel dọc", mainNav.classList.contains("open"));
+  check("drawer: hamburger mở drawer + backdrop, nút ☰ thành ✕, khoá cuộn body", mainNav.classList.contains("open") && backdrop.classList.contains("open") && navToggle.textContent === "✕" && doc.body.style.overflow === "hidden");
+  backdrop.dispatch("click", { target: backdrop });
+  check("drawer: bấm backdrop đóng drawer + mở khoá cuộn", !mainNav.classList.contains("open") && !backdrop.classList.contains("open") && doc.body.style.overflow === "");
   navToggle.dispatch("click", { target: navToggle });
-  check("menu: hamburger bấm lại đóng panel", !mainNav.classList.contains("open"));
+  byId["nav-close"].dispatch("click", { target: byId["nav-close"] });
+  check("drawer: nút ✕ trong drawer đóng", !mainNav.classList.contains("open"));
+  navToggle.dispatch("click", { target: navToggle });
+  (doc._domHandlers.keydown || []).forEach((fn) => fn({ key: "Escape" }));
+  check("drawer: bấm Esc đóng drawer", !mainNav.classList.contains("open"));
+  navToggle.dispatch("click", { target: navToggle });
+  check("menu: hamburger mở drawer", mainNav.classList.contains("open"));
+  navToggle.dispatch("click", { target: navToggle });
+  check("menu: hamburger bấm lại đóng drawer", !mainNav.classList.contains("open"));
 }
 
 /* Menu trên desktop có chuột (hover): bấm mục cha là đi thẳng theo
@@ -241,6 +269,59 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   let prevented = false;
   prodLink.dispatch("click", { target: prodLink, preventDefault: () => { prevented = true; } });
   check("menu (desktop): bấm Sản phẩm thì theo link, không mở dropdown", !prevented && !prodLink.classList.contains("open"));
+}
+
+/* Accordion 2 tầng trong drawer (mobile): mặc định chỉ hiện tiêu đề
+   nhóm kèm số lượng; bấm 1 nhóm mở đúng nhóm đó, nhóm khác đóng. */
+{
+  const { byId } = makeEnv({ page: "home", search: "" });
+  await tick(300);
+  const menu = byId["menu-san-pham"].innerHTML;
+  check("accordion: đủ 4 tiêu đề nhóm kèm số lượng (7/4/2/1)", ["Chăn ga gối", "(7)", "Đệm", "(4)", "Ruột", "(2)", "Phụ kiện", "(1)"].every((x) => menu.includes(x)));
+  check("accordion: tiêu đề nhóm là nút bấm (4 nút menu-group-toggle)", (menu.match(/menu-group-toggle/g) || []).length === 4);
+  const panel = byId["menu-san-pham"];
+  const g1 = new MiniElement("div");
+  const g2 = new MiniElement("div");
+  const t1 = new MiniElement("button");
+  const t2 = new MiniElement("button");
+  t1.closest = (sel) => (sel === ".menu-group" ? g1 : (sel === ".menu-group-toggle" ? t1 : null));
+  t2.closest = (sel) => (sel === ".menu-group" ? g2 : (sel === ".menu-group-toggle" ? t2 : null));
+  g1.querySelector = () => t1;
+  g2.querySelector = () => t2;
+  panel.querySelectorAll = () => [g1, g2];
+  panel.dispatch("click", { target: t1 });
+  check("accordion: bấm nhóm 1 mở nhóm 1, nhóm 2 đóng", g1.classList.contains("open") && !g2.classList.contains("open") && t1.getAttribute("aria-expanded") === "true");
+  panel.dispatch("click", { target: t2 });
+  check("accordion: bấm nhóm 2 mở nhóm 2, nhóm 1 đóng", g2.classList.contains("open") && !g1.classList.contains("open"));
+  panel.dispatch("click", { target: t2 });
+  check("accordion: bấm lại nhóm 2 thì đóng", !g2.classList.contains("open"));
+}
+
+/* Drawer vuốt mở/đóng (mô phỏng touch, mobile 390px). */
+{
+  const { byId, doc } = makeEnv({ page: "home", search: "", mobile: true });
+  await tick(300);
+  const nav = byId["main-nav"];
+  const touch = (x, y) => ({ touches: [{ clientX: x, clientY: y }], changedTouches: [{ clientX: x, clientY: y }], preventDefault: () => {} });
+  const fire = (handlers, ev) => (handlers || []).forEach((fn) => fn(ev));
+  check("drawer: mặc định đóng trên mobile", !nav.classList.contains("open"));
+  /* Vuốt từ mép phải sang trái để mở. */
+  fire(doc._domHandlers.touchstart, touch(385, 400));
+  fire(doc._domHandlers.touchmove, touch(320, 400));
+  fire(doc._domHandlers.touchmove, touch(260, 400));
+  fire(doc._domHandlers.touchend, touch(260, 400));
+  check("drawer: vuốt từ mép phải mở được", nav.classList.contains("open") && byId["nav-backdrop"].classList.contains("open"));
+  check("drawer: mở thì khoá cuộn body", doc.body.style.overflow === "hidden");
+  /* Vuốt drawer sang phải để đóng. */
+  fire((nav._handlers || {}).touchstart, touch(100, 400));
+  fire((nav._handlers || {}).touchmove, touch(200, 400));
+  fire((nav._handlers || {}).touchend, touch(200, 400));
+  check("drawer: vuốt sang phải đóng được", !nav.classList.contains("open"));
+  /* Vuốt dọc thì không mở drawer. */
+  fire(doc._domHandlers.touchstart, touch(385, 400));
+  fire(doc._domHandlers.touchmove, touch(380, 300));
+  fire(doc._domHandlers.touchend, touch(380, 300));
+  check("drawer: vuốt dọc không mở drawer", !nav.classList.contains("open"));
 }
 
 /* Địa điểm: render từ site.json */
