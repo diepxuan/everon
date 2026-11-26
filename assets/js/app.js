@@ -262,6 +262,108 @@
     });
   }
 
+  /* ---------- menu header ---------- */
+  /* Màn cảm ứng không có hover: bấm mục cha thì mở dropdown (bấm lần
+     nữa mới theo link). Desktop có hover: menu mở bằng hover /
+     focus-within nên bấm là đi thẳng theo link. */
+  var CAN_HOVER = true;
+  try {
+    CAN_HOVER = !window.matchMedia || window.matchMedia("(hover: hover)").matches;
+  } catch (e) { CAN_HOVER = true; }
+  /* Danh mục đang bán (có trang danh mục): menu hiện thành link.
+     Khi một danh mục mới lên sóng, thêm id của nó vào đây (và thêm
+     vào data/categories.json) là menu tự đổi thành link. */
+  var LIVE_CATEGORIES = ["bo-chan-ga"];
+  /* Các nhóm chưa có dữ liệu (khai báo tĩnh): chỉ hiện tên + tag
+     "Sắp có", không phải link. Khi danh mục lên sóng, chuyển mục đó
+     sang LIVE_CATEGORIES rồi bỏ khỏi danh sách này. */
+  var MENU_SOON = [
+    { group: "Đệm", items: ["Đệm cao su", "Đệm bông ép", "Đệm foam", "Đệm lò xo"] },
+    { group: "Ruột", items: ["Ruột gối", "Ruột chăn"] },
+    { group: "Phụ kiện", items: ["Phụ kiện"] }
+  ];
+  function soonItemHTML(name) {
+    return '<li><span class="menu-soon">' + esc(name) + ' <span class="tag-soon">Sắp có</span></span></li>';
+  }
+  function menuGroupHTML(title, itemsHTML) {
+    return '<div class="menu-group"><h3>' + esc(title) + "</h3><ul>" + itemsHTML + "</ul></div>";
+  }
+  /* Dropdown "Sản phẩm": nhóm Chăn ga gối lấy từ data/categories.json
+     (7 mục), 3 nhóm còn lại lấy từ MENU_SOON ở trên. */
+  function productsMenuHTML(data) {
+    var chanGaGoi = (data.categories.categories || []).map(function (c) {
+      if (LIVE_CATEGORIES.indexOf(c.id) !== -1) {
+        return '<li><a href="' + esc(categoryUrl()) + '">' + esc(c.name) + "</a></li>";
+      }
+      return soonItemHTML(c.name);
+    }).join("");
+    var soon = MENU_SOON.map(function (g) {
+      return menuGroupHTML(g.group, g.items.map(soonItemHTML).join(""));
+    }).join("");
+    return '<div class="menu-col">' + menuGroupHTML("Chăn ga gối", chanGaGoi) + "</div>" +
+      '<div class="menu-col">' + soon + "</div>";
+  }
+  function closeMenus() {
+    ["nav-san-pham", "nav-bo-suu-tap"].forEach(function (id) {
+      var link = document.getElementById(id);
+      if (!link) return;
+      if (link.classList) link.classList.remove("open");
+      link.setAttribute("aria-expanded", "false");
+    });
+  }
+  function toggleMenu(link, e) {
+    if (CAN_HOVER) return true;
+    if (!link || !link.classList) return true;
+    var isOpen = link.classList.contains("open");
+    closeMenus();
+    if (!isOpen) {
+      link.classList.add("open");
+      link.setAttribute("aria-expanded", "true");
+      if (e && e.preventDefault) e.preventDefault();
+      return false;
+    }
+    return true;
+  }
+  function initMenu(data) {
+    var page = document.body ? document.body.getAttribute("data-page") : null;
+    /* Mục đang xem: trang chủ giữ class active tĩnh trong HTML; trang
+       danh mục / chi tiết thì "Sản phẩm" active. */
+    if (page === "category" || page === "detail") {
+      var prodLink = document.getElementById("nav-san-pham");
+      if (prodLink && prodLink.classList) prodLink.classList.add("active");
+    }
+    var panel = document.getElementById("menu-san-pham");
+    if (panel) panel.innerHTML = productsMenuHTML(data);
+    ["nav-san-pham", "nav-bo-suu-tap"].forEach(function (id) {
+      var link = document.getElementById(id);
+      if (link) link.addEventListener("click", function (e) { toggleMenu(link, e); });
+    });
+    /* Nút hamburger (mobile ≤720px): mở / đóng panel dọc. */
+    var toggle = document.getElementById("nav-toggle");
+    var nav = document.getElementById("main-nav");
+    if (toggle && nav && nav.classList) {
+      toggle.addEventListener("click", function () {
+        if (nav.classList.contains("open")) {
+          nav.classList.remove("open");
+          toggle.setAttribute("aria-expanded", "false");
+        } else {
+          nav.classList.add("open");
+          toggle.setAttribute("aria-expanded", "true");
+        }
+      });
+    }
+    /* Esc hoặc bấm ra ngoài thì đóng dropdown. */
+    if (document.addEventListener) {
+      document.addEventListener("keydown", function (e) {
+        if (e && e.key === "Escape") closeMenus();
+      });
+      document.addEventListener("click", function (e) {
+        var t = e && e.target && e.target.closest ? e.target.closest("[data-menu]") : null;
+        if (!t) closeMenus();
+      });
+    }
+  }
+
   /* ---------- trang chủ ---------- */
   function initHome(data) {
     var site = data.site;
@@ -275,28 +377,6 @@
         .slice(0, 8);
       grid.innerHTML = featured.map(function (p) { return cardHTML(p, site); }).join("\n");
       bindImageFallbacks(grid);
-    }
-    var catGrid = document.getElementById("category-grid");
-    if (catGrid) {
-      var cats = (data.categories.categories || []).map(function (c) {
-        var ready = c.id === "bo-chan-ga";
-        var count = ready ? data.products.length : c.product_count_on_source;
-        if (ready) {
-          return (
-            '<a class="cat-card" href="' + esc(categoryUrl()) + '">' +
-            "<h3>" + esc(c.name) + "</h3>" +
-            '<p><span class="count">' + count + ' mẫu</span> — giá niêm yết, nhắn Zalo để đặt hàng.</p>' +
-            "<p>Xem danh mục →</p></a>"
-          );
-        }
-        return (
-          '<div class="cat-card soon">' +
-          "<h3>" + esc(c.name) + "</h3>" +
-          '<p>Danh mục đang được cập nhật dữ liệu.</p>' +
-          '<span class="tag-soon">Sắp có</span></div>'
-        );
-      }).join("\n");
-      catGrid.innerHTML = cats;
     }
   }
 
@@ -334,6 +414,15 @@
         opt.textContent = (COLLECTION_LABELS[c] || c) + " (" + colCounts[c] + ")";
         colSelect.appendChild(opt);
       });
+
+    /* Link từ menu "Bộ sưu tập" (?collection=<id>): chọn sẵn bộ lọc.
+       Chỉ nhận bộ sưu tập có trong ô chọn (ít hơn 189 SP); mã lạ thì
+       bỏ qua, hiện toàn bộ danh mục. */
+    var params = new URLSearchParams(window.location.search);
+    var colParam = params.get("collection") || "";
+    if (colParam && colCounts[colParam] && colCounts[colParam] < products.length) {
+      colSelect.value = colParam;
+    }
 
     function applyFilters() {
       var q = norm(qInput.value.trim());
@@ -618,6 +707,7 @@
     loadData()
       .then(function (data) {
         bindSite(data.site);
+        initMenu(data);
         if (page === "home") initHome(data);
         else if (page === "category") initCategory(data);
         else if (page === "detail") initDetail(data);

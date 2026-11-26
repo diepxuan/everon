@@ -75,6 +75,100 @@ a { color: var(--brand); }
   white-space: nowrap;
 }
 
+/* ---------- Menu header (dropdown) ---------- */
+.nav-toggle {
+  display: none;
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, .5);
+  color: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+.nav-item { position: relative; }
+.nav-link .caret { font-size: 11px; margin-left: 2px; }
+.dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 240px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(16, 35, 58, .2);
+  padding: 8px;
+  z-index: 30;
+}
+/* Desktop: mở bằng hover / focus-within; màn cảm ứng: JS thêm class
+   open cho link cha (bấm lần 1 mở, lần 2 theo link). */
+.nav-item:hover .dropdown,
+.nav-item:focus-within .dropdown,
+.nav-link.open + .dropdown { display: block; }
+/* Căn giữa dưới mục cha để không tràn phải ở màn desktop hẹp
+   (mục Sản phẩm nằm lệch phải trong header, dropdown 600px mà neo
+   trái sẽ lòi ra ngoài viewport). */
+.dropdown-products { left: 50%; transform: translateX(-50%); min-width: 600px; padding: 12px 16px; }
+.nav-item:hover .dropdown-products,
+.nav-item:focus-within .dropdown-products,
+.nav-link.open + .dropdown-products { display: flex; flex-wrap: wrap; gap: 8px 32px; }
+.menu-col { flex: 1 1 0; min-width: 0; }
+.menu-group h3 {
+  margin: 8px 8px 4px;
+  font-size: 12.5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--muted);
+}
+.menu-group ul { list-style: none; margin: 0 0 6px; padding: 0; }
+.main-nav .dropdown a {
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14.5px;
+}
+.main-nav .menu-group a {
+  display: block;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+.main-nav .menu-group a:hover { background: #eef5fb; color: var(--brand); }
+.menu-soon {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  color: var(--muted);
+  font-size: 14.5px;
+}
+.dropdown .tag-soon {
+  display: inline-block;
+  background: #eee;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.main-nav .dropdown-links a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+.main-nav .dropdown-links a:hover { background: #eef5fb; color: var(--brand); }
+/* Màn hẹp (≤900px): dropdown Sản phẩm xếp 1 cột để không tràn phải. */
+@media (max-width: 900px) {
+  .dropdown-products { min-width: 280px; }
+  .nav-item:hover .dropdown-products,
+  .nav-item:focus-within .dropdown-products,
+  .nav-link.open + .dropdown-products { display: block; }
+}
+
 /* ---------- Hero ---------- */
 .hero { background: var(--navy); color: #fff; padding: 34px 0 40px; }
 .hero h1 { margin: 0 0 8px; font-size: 30px; line-height: 1.25; }
@@ -388,6 +482,46 @@ main { padding: 8px 0 40px; }
   .filters { grid-template-columns: 2fr 1fr 1fr 1fr; align-items: end; }
   .detail { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); align-items: start; }
   .gallery { position: sticky; top: 76px; }
+}
+
+
+/* ---------- Menu mobile (≤720px) ---------- */
+@media (max-width: 720px) {
+  .nav-toggle { display: block; }
+  /* Header gọn: nút Gọi showroom đã ẩn từ 480px, ẩn luôn tới 720px
+     cho vừa nút hamburger; số điện thoại vẫn có trong thẻ showroom. */
+  .header-call { display: none; }
+  .main-nav {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 0;
+    margin-left: 0;
+  }
+  .main-nav.open { display: flex; }
+  .nav-item { width: 100%; }
+  /* Dropdown thành accordion dọc trong panel; chỉ mở khi link cha có
+     class open (JS), không mở bằng hover / focus. */
+  .nav-item:hover .dropdown,
+  .nav-item:focus-within .dropdown { display: none; }
+  .nav-link.open + .dropdown { display: block; }
+  .nav-link.open + .dropdown-products { display: block; }
+  .dropdown {
+    position: static;
+    transform: none;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    border-radius: 0;
+    padding: 0 0 4px 14px;
+  }
+  .main-nav .dropdown a { color: #dbe6f2; }
+  .main-nav .menu-group a:hover,
+  .main-nav .dropdown-links a:hover { background: rgba(255, 255, 255, .14); color: #fff; }
+  .menu-group h3 { color: #9fb3c8; }
+  .menu-soon { color: #9fb3c8; }
+  .dropdown .tag-soon { background: rgba(255, 255, 255, .16); color: #dbe6f2; }
 }
 
 /* ---------- Mobile nhỏ ---------- */
