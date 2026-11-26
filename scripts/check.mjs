@@ -4,7 +4,7 @@
 //    không có link href nào trỏ ra ngoài (trừ Zalo + tel:).
 // 2. Chạy thử app.js với DOM shim: render trang chủ / danh mục / chi tiết,
 //    đếm sản phẩm, nhãn Hết hàng, thử bộ lọc và chọn biến thể.
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
@@ -31,8 +31,8 @@ const files = walk(root, []).filter(
 for (const f of files) {
   const src = readFileSync(f, "utf8");
   check(
-    "không chứa everon.com: " + f.replace(root + "/", ""),
-    !/everon\.com/i.test(src)
+    "không chứa everon.com/dreamland.vn: " + f.replace(root + "/", ""),
+    !/everon\.com|dreamland\.vn/i.test(src)
   );
 }
 /* Link href trong HTML: chỉ cho phép nội bộ, #..., zalo.me, tel:, mailto:,
@@ -61,7 +61,7 @@ const cssSrc = readFileSync(join(root, "assets/css/style.css"), "utf8");
 check("drawer: CSS có panel trượt từ phải (translateX + 100dvh + min(320px, 85vw))", cssSrc.includes("translateX(102%)") && cssSrc.includes("100dvh") && cssSrc.includes("min(320px, 85vw)"));
 check("drawer: CSS có backdrop mờ rgba(0, 0, 0, .5)", cssSrc.includes("rgba(0, 0, 0, .5)"));
 check("drawer: header 1 hàng mobile (brand co + tagline … + ẩn dưới 400px)", cssSrc.includes("text-overflow: ellipsis") && cssSrc.includes("@media (max-width: 400px)"));
-check("menu mobile: active nhẹ vạch vàng, không pill xám", cssSrc.includes("box-shadow: inset 3px 0 0 var(--gold)"));
+check("menu mobile: active nhẹ vạch đỏ nâu Điệp Xuân, không pill xám", cssSrc.includes("box-shadow: inset 3px 0 0 var(--rust-light)"));
 check("menu mobile: tag Sắp có không nền pill (background: transparent)", cssSrc.includes(".tag-soon { background: transparent;"));
 check("menu mobile: dấu ▾ xoay khi mở (rotate 180deg)", cssSrc.includes("rotate(180deg)"));
 /* Căn hàng dọc menu desktop (fix 2026-11-26): 2 mục dropdown từng cao
@@ -106,6 +106,52 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
   check("HTML footer ghi cả 2 showroom: " + rel, src.includes("241 Trần Hưng Đạo · MG15 Shophouse Vincom"));
 }
 check("CSS có lưới 2 địa điểm", css.includes(".loc-grid") && css.includes(".loc-card"));
+/* ---------- Style Điệp Xuân (A–D) + 8 trang chính sách (2026-11-26) ---------- */
+/* A. Màu nhấn đỏ nâu gỉ sắt #A93C11 (diepxuan.com): đúng mã chỉ dùng
+   trên nền sáng (--rust, tương phản với trắng 6.28:1); trên nền navy
+   dùng tông sáng cùng họ --rust-light (5.25:1). Vàng gold cũ bỏ hẳn. */
+check("A: CSS có --rust #a93c11 (đúng mã diepxuan.com)", /--rust:\s*#a93c11/i.test(cssSrc));
+check("A: CSS có --rust-light cho chữ trên nền tối", cssSrc.includes("--rust-light:"));
+check("A: không còn dùng var(--gold)", !cssSrc.includes("var(--gold)"));
+check("A: chữ ĐIỆP XUÂN header dùng đỏ nâu sáng trên nền navy", cssSrc.includes(".brand strong") && /\.brand strong \{[^}]*color: var\(--rust-light\)/.test(cssSrc));
+check("A: link Xem tất cả dùng #A93C11 trên nền sáng", /\.section-head \.more \{[^}]*color: var\(--rust\)/.test(cssSrc));
+check("A: vạch active drawer + số hero-stats dùng đỏ nâu sáng", cssSrc.includes("box-shadow: inset 3px 0 0 var(--rust-light)") && cssSrc.includes(".hero-stats b { display: block; font-size: 24px; color: var(--rust-light); }"));
+check("A: tiêu đề h2 trang chính sách có vạch đỏ nâu #A93C11", cssSrc.includes("border-left: 4px solid var(--rust)"));
+check("C: hero trang chủ có slogan Chăn ga gối đệm cao cấp!", indexSrc.includes('<span class="hero-slogan">Chăn ga gối đệm cao cấp!</span>') && cssSrc.includes(".hero-slogan { color: var(--rust-light);"));
+/* B. Logo Đ tự host (không hotlink): file tồn tại + mọi trang dùng. */
+check("B: logo Điệp Xuân tự host tồn tại (assets/img/logo-diep-xuan.png)", existsSync(join(root, "assets/img/logo-diep-xuan.png")) && statSync(join(root, "assets/img/logo-diep-xuan.png")).size > 1000);
+check("B: logo Đ đặt trên chip trắng bo tròn (render thử: trực tiếp trên navy khó đọc)", /\.brand-logo-dx \{[^}]*background: #fff;[^}]*border-radius: 8px/.test(cssSrc) && cssSrc.includes(".footer-logo-dx { height: 24px;"));
+check("B: drawer chỉ hiện monogram Đ + ĐIỆP XUÂN (ẩn wordmark Everon cho vừa 320px)", cssSrc.includes(".drawer-brand .brand-logo { display: none; }"));
+for (const f of files.filter((x) => x.endsWith(".html"))) {
+  const src = readFileSync(f, "utf8");
+  const rel = f.replace(root + "/", "");
+  check("B: logo Đ cạnh logo Everon (header + drawer): " + rel, (src.match(/brand-logo-dx/g) || []).length >= 2 && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png"'));
+}
+/* D + 8 trang chính sách. */
+const POLICY_PAGES = [
+  "chinh-sach-van-chuyen.html", "chinh-sach-doi-tra.html", "chinh-sach-bao-hanh.html",
+  "chinh-sach-bao-mat.html", "dieu-khoan-dich-vu.html", "huong-dan-mua-hang.html",
+  "cau-hoi-thuong-gap.html", "he-thong-cua-hang.html",
+];
+for (const p of POLICY_PAGES) {
+  check("chính sách: có trang " + p, existsSync(join(root, p)));
+  const src = readFileSync(join(root, p), "utf8");
+  check("chính sách: " + p + " có breadcrumb + khối hỗ trợ Zalo/gọi", src.includes('class="breadcrumb"') && src.includes("Cần hỗ trợ?") && src.includes("data-zalo-buttons") && src.includes('data-hotline'));
+  check("chính sách: " + p + " không nhắc giỏ hàng/thanh toán online như luồng mua", !src.includes("thêm vào giỏ") && !src.includes("Tiết kiệm") && !/%\s*giảm|giá sale/i.test(src));
+}
+check("chính sách: trang hướng dẫn mua hàng viết theo luồng Zalo (4 bước, không giỏ hàng)", (() => {
+  const s = readFileSync(join(root, "huong-dan-mua-hang.html"), "utf8");
+  return ["Bước 1", "Bước 2", "Bước 3", "Bước 4"].every((b) => s.includes(b)) && s.includes("Nhắn Zalo") && !s.includes("thêm vào giỏ");
+})());
+for (const f of files.filter((x) => x.endsWith(".html"))) {
+  const src = readFileSync(f, "utf8");
+  const rel = f.replace(root + "/", "");
+  const pfx = rel === "bo-chan-ga/index.html" ? "../" : "";
+  check("D: footer có GPDKKD + địa chỉ xưởng: " + rel, src.includes("GPDKKD: 3100349022") && src.includes("Khu làng nghề Thuận Đức, Thuận Hoà, Thuận Đức, Đồng Hới, Quảng Bình"));
+  check("D: footer có đủ 8 link chính sách + cửa hàng: " + rel, POLICY_PAGES.every((p) => src.includes('href="' + pfx + p + '"')));
+}
+check("D: CSS có lưới footer + nhóm link chính sách", cssSrc.includes(".footer-grid") && cssSrc.includes(".footer-policy"));
+check("chính sách: site.json có đủ 2 số Zalo/hotline", Array.isArray(siteJson.zalo) && siteJson.zalo.map((z) => z.phone.replace(/\s/g, "")).includes("0911825151") && siteJson.zalo.map((z) => z.phone.replace(/\s/g, "")).includes("0363089565"));
 const appJs = readFileSync(join(root, "assets/js/app.js"), "utf8");
 check("app.js vẽ địa điểm từ site.locations", appJs.includes("[data-locations]") && appJs.includes("site.locations") && appJs.includes("locationsHTML"));
 /* Scraper lấy toàn bộ ảnh: không còn giới hạn 3 ảnh trong media. */
