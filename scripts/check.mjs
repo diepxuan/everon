@@ -45,6 +45,22 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
   );
   check("link ngoài chỉ có Zalo + bản đồ Google: " + f.replace(root + "/", ""), bad.length === 0, bad.join(", "));
 }
+/* Menu header: Trang chủ | Sản phẩm ▾ | Bộ sưu tập ▾ | Showroom | Liên hệ.
+   Link dùng đường dẫn tương đối theo từng trang (../ ở trang danh mục). */
+for (const f of files.filter((x) => x.endsWith(".html"))) {
+  const src = readFileSync(f, "utf8");
+  const rel = f.replace(root + "/", "");
+  const prefix = rel === "bo-chan-ga/index.html" ? "../" : "";
+  check("menu: có nút hamburger + nav#main-nav: " + rel, src.includes('id="nav-toggle"') && src.includes('id="main-nav"'));
+  check("menu: có mục Sản phẩm và Bộ sưu tập: " + rel, src.includes('id="nav-san-pham"') && src.includes('id="nav-bo-suu-tap"'));
+  check("menu: link Sản phẩm tới bo-chan-ga/: " + rel, src.includes('href="' + prefix + 'bo-chan-ga/" class="nav-link" id="nav-san-pham"'));
+  check("menu: 3 link Bộ sưu tập ?collection=: " + rel, ["everon-2027", "bst-chan-ga-2022", "bst-cutie-2027"].every((c) => src.includes('href="' + prefix + 'bo-chan-ga/?collection=' + c + '"')));
+}
+const indexSrc = readFileSync(join(root, "index.html"), "utf8");
+check("menu: trang chủ không còn mục Danh mục sản phẩm", !indexSrc.includes("cat-title") && !indexSrc.includes("category-grid"));
+check("menu: trang chủ giữ Trang chủ active", indexSrc.includes('href="index.html" class="active"'));
+const catSrc = readFileSync(join(root, "bo-chan-ga/index.html"), "utf8");
+check("menu: trang danh mục không còn class active tĩnh Bộ chăn ga", !catSrc.includes('class="active">Bộ chăn ga'));
 const css = readFileSync(join(root, "assets/css/style.css"), "utf8");
 check("CSS có breakpoint mobile 480px", css.includes("@media (max-width: 480px)"));
 check("CSS có breakpoint desktop 720px", css.includes("@media (min-width: 720px)"));
@@ -142,7 +158,7 @@ class MiniElement {
 }
 MiniElement.registry = {};
 
-function makeEnv({ page, search }) {
+function makeEnv({ page, search, hover }) {
   MiniElement.registry = {};
   const byId = {};
   const doc = {
@@ -165,6 +181,9 @@ function makeEnv({ page, search }) {
   sandbox.window = sandbox;
   sandbox.window.__ROOT__ = page === "category" ? "../" : "./";
   sandbox.window.__DATA_BASE__ = page === "category" ? "../data/" : "data/";
+  /* Giả lập thiết bị: mặc định là cảm ứng (không hover) để kiểm tra
+     bấm mở menu; truyền hover: true để giả lập desktop có chuột. */
+  sandbox.matchMedia = (q) => ({ matches: hover === true && q === "(hover: hover)", media: q, addListener() {}, removeListener() {} });
   sandbox.fetch = async (url) => {
     const rel = String(url).replace(/^(\.\.\/)+/, "");
     const text = readFileSync(join(root, rel), "utf8");
@@ -179,13 +198,49 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* Trang chủ */
 {
-  const { byId } = makeEnv({ page: "home", search: "" });
+  const { byId, doc } = makeEnv({ page: "home", search: "" });
   await tick(300);
   const feat = byId["featured-grid"].innerHTML;
   check("trang chủ: 8 sản phẩm nổi bật", (feat.match(/<article class="card">/g) || []).length === 8);
-  check("trang chủ: có danh mục Bộ chăn ga", byId["category-grid"].innerHTML.includes("Bộ chăn ga"));
-  check("trang chủ: danh mục chưa có dữ liệu ghi Sắp có", byId["category-grid"].innerHTML.includes("Sắp có"));
   check("trang chủ: không có link ra ngoài trong HTML render", !/href="https?:\/\/(?!zalo\.me)/.test(feat));
+  /* Menu "Sản phẩm" render từ data: 4 nhóm, Bộ chăn ga là link duy
+     nhất, 13 mục còn lại là "Sắp có" (không phải thẻ <a>). */
+  const menu = byId["menu-san-pham"].innerHTML;
+  check("menu Sản phẩm: đủ 4 nhóm Chăn ga gối / Đệm / Ruột / Phụ kiện", ["Chăn ga gối", "Đệm", "Ruột", "Phụ kiện"].every((g) => menu.includes(g)));
+  check("menu Sản phẩm: Bộ chăn ga là link duy nhất tới bo-chan-ga/", (menu.match(/<a /g) || []).length === 1 && menu.includes('href="./bo-chan-ga/"') && menu.includes("Bộ chăn ga"));
+  check("menu Sản phẩm: 13 mục Sắp có", (menu.match(/Sắp có/g) || []).length === 13);
+  check("menu: trang chủ thì Sản phẩm không active", !byId["nav-san-pham"].classList.contains("active"));
+  /* Bấm mục cha (môi trường kiểm thử giả lập cảm ứng): lần 1 mở
+     dropdown, không chuyển trang; lần 2 thì theo link. */
+  const prodLink = byId["nav-san-pham"];
+  let prevented = false;
+  const ev = { target: prodLink, preventDefault: () => { prevented = true; } };
+  prodLink.dispatch("click", ev);
+  check("menu: bấm Sản phẩm lần 1 mở dropdown, không chuyển trang", prodLink.classList.contains("open") && prevented);
+  prevented = false;
+  prodLink.dispatch("click", ev);
+  check("menu: bấm Sản phẩm lần 2 thì theo link", !prodLink.classList.contains("open") && !prevented);
+  prodLink.dispatch("click", ev);
+  (doc._domHandlers.keydown || []).forEach((fn) => fn({ key: "Escape" }));
+  check("menu: bấm Esc đóng dropdown", !prodLink.classList.contains("open"));
+  /* Nút hamburger mở / đóng panel dọc. */
+  const navToggle = byId["nav-toggle"];
+  const mainNav = byId["main-nav"];
+  navToggle.dispatch("click", { target: navToggle });
+  check("menu: hamburger mở panel dọc", mainNav.classList.contains("open"));
+  navToggle.dispatch("click", { target: navToggle });
+  check("menu: hamburger bấm lại đóng panel", !mainNav.classList.contains("open"));
+}
+
+/* Menu trên desktop có chuột (hover): bấm mục cha là đi thẳng theo
+   link, không mở dropdown bằng click. */
+{
+  const { byId } = makeEnv({ page: "home", search: "", hover: true });
+  await tick(300);
+  const prodLink = byId["nav-san-pham"];
+  let prevented = false;
+  prodLink.dispatch("click", { target: prodLink, preventDefault: () => { prevented = true; } });
+  check("menu (desktop): bấm Sản phẩm thì theo link, không mở dropdown", !prevented && !prodLink.classList.contains("open"));
 }
 
 /* Địa điểm: render từ site.json */
@@ -244,6 +299,20 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   await tick(50);
   const firstPrice = grid.innerHTML.match(/<p class="price">([\d.]+)đ/);
   check("sắp xếp: giá tăng dần bắt đầu 219.000đ", firstPrice && firstPrice[1] === "219.000", firstPrice && firstPrice[1]);
+  check("menu: trang danh mục thì Sản phẩm active", byId["nav-san-pham"].classList.contains("active"));
+}
+
+/* Trang danh mục: link ?collection= từ menu Bộ sưu tập */
+{
+  const { byId } = makeEnv({ page: "category", search: "?collection=bst-cutie-2027" });
+  await tick(300);
+  check("?collection=: Cutie 2027 lọc ra 3 sản phẩm", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 3);
+  check("?collection=: ô chọn bộ sưu tập đã chọn Cutie 2027", byId["filter-collection"].value === "bst-cutie-2027");
+}
+{
+  const { byId } = makeEnv({ page: "category", search: "?collection=khong-co" });
+  await tick(300);
+  check("?collection=: mã lạ thì bỏ qua, hiện đủ 189", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 189);
 }
 
 /* Trang chi tiết EPM22064 */
@@ -251,6 +320,7 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   const { byId, sandbox, doc } = makeEnv({ page: "detail", search: "?sku=EPM22064" });
   await tick(300);
   const box = byId["product-detail"];
+  check("menu: trang chi tiết thì Sản phẩm active", byId["nav-san-pham"].classList.contains("active"));
   check("chi tiết: render EPM22064", box.innerHTML.includes("EPM22064"));
   check("chi tiết: giá mặc định là giá gốc 4.980.000đ", box.innerHTML.includes("4.980.000đ") && !box.innerHTML.includes("2.739.000đ"));
   check("giá gốc: chi tiết không có nhãn % giảm, không có giá gạch ngang, không có dòng Tiết kiệm", !/>−\d+%/.test(box.innerHTML) && !box.innerHTML.includes('class="old"') && !box.innerHTML.includes("Tiết kiệm"));
