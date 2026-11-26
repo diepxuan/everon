@@ -1,1 +1,107 @@
-{"categories":[{"id":"bo-chan-ga","name":"Bộ chăn ga","parent_id":null,"product_count_on_source":189,"slug":"bo-chan-ga","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},{"id":"chan-va-vo-chan","name":"Chăn và vỏ chăn","parent_id":null,"product_count_on_source":null,"slug":"chan-va-vo-chan","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},{"id":"ga","name":"Ga","parent_id":null,"product_count_on_source":null,"slug":"ga","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},{"id":"vo-goi","name":"Vỏ gối","parent_id":null,"product_count_on_source":null,"slug":"vo-goi","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},{"id":"vo-goi-tua","name":"Vỏ gối tựa","parent_id":null,"product_count_on_source":null,"slug":"vo-goi-tua","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},{"id":"chan-ga-goi-tre-em","name":"Chăn ga gối trẻ em","parent_id":null,"product_count_on_source":null,"slug":"chan-ga-goi-tre-em","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},{"id":"bo-chan-ga-artemis","name":"Bộ chăn ga Artemis","parent_id":null,"product_count_on_source":null,"slug":"bo-chan-ga-artemis","source_url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"}],"note":"Chi danh muc 'bo-chan-ga' co product_count_on_source da kiem chung (189 san pham, trang danh muc sach ngay 21/11/2026). Cac danh muc anh em chi lay ten tu bo loc tren cung trang; so luong de null, se dien khi scraper chay toan bo.","schema_version":1,"source":{"site":"everon.com","url":"https://everon.com/danh-muc-san-pham/bo-chan-ga"},"synced_at":"2026-11-22T00:54:00+07:00"}
+{
+  "categories": [
+    {
+      "id": "bo-chan-ga",
+      "name": "Bộ chăn ga",
+      "group": "Chăn ga gối",
+      "product_count_on_source": 181,
+      "slug": "bo-chan-ga",
+      "source_url": "https://everon.com/danh-muc-san-pham/bo-chan-ga"
+    },
+    {
+      "id": "chan-va-vo-chan",
+      "name": "Chăn và vỏ chăn",
+      "group": "Chăn ga gối",
+      "product_count_on_source": 114,
+      "slug": "chan-va-vo-chan",
+      "source_url": "https://everon.com/danh-muc-san-pham/chan-va-vo-chan"
+    },
+    {
+      "id": "ga",
+      "name": "Ga",
+      "group": "Chăn ga gối",
+      "product_count_on_source": 9,
+      "slug": "ga",
+      "source_url": "https://everon.com/danh-muc-san-pham/ga"
+    },
+    {
+      "id": "vo-goi",
+      "name": "Vỏ gối",
+      "group": "Chăn ga gối",
+      "product_count_on_source": 122,
+      "slug": "vo-goi",
+      "source_url": "https://everon.com/danh-muc-san-pham/vo-goi"
+    },
+    {
+      "id": "tre-em",
+      "name": "Trẻ em",
+      "group": "Chăn ga gối",
+      "product_count_on_source": 31,
+      "slug": "tre-em",
+      "source_url": "https://everon.com/danh-muc-san-pham/chan-ga-goi-tre-em"
+    },
+    {
+      "id": "bo-chan-ga-artemis",
+      "name": "Bộ chăn ga Artemis",
+      "group": "Chăn ga gối",
+      "product_count_on_source": 24,
+      "slug": "bo-chan-ga-artemis",
+      "source_url": "https://everon.com/danh-muc-san-pham/bo-chan-ga-artemis"
+    },
+    {
+      "id": "dem",
+      "name": "Đệm",
+      "group": "Đệm",
+      "product_count_on_source": 13,
+      "slug": "dem",
+      "source_url": "https://everon.com/danh-muc-san-pham/dem"
+    },
+    {
+      "id": "dem-k-bedding",
+      "name": "Đệm K-Bedding",
+      "group": "Đệm",
+      "product_count_on_source": 4,
+      "slug": "dem-k-bedding",
+      "source_url": "https://everon.com/danh-muc-san-pham/dem-k-bedding"
+    },
+    {
+      "id": "k-bedding",
+      "name": "K-Bedding",
+      "group": "Đệm",
+      "product_count_on_source": 84,
+      "slug": "k-bedding",
+      "source_url": "https://everon.com/danh-muc-san-pham/bo-chan-ga-k-bedding"
+    },
+    {
+      "id": "ruot",
+      "name": "Ruột gối / Ruột chăn",
+      "group": "Ruột & Gối",
+      "product_count_on_source": 22,
+      "slug": "ruot",
+      "source_url": "https://everon.com/danh-muc-san-pham/ruot"
+    },
+    {
+      "id": "goi",
+      "name": "Gối",
+      "group": "Ruột & Gối",
+      "product_count_on_source": 14,
+      "slug": "goi",
+      "source_url": "https://everon.com/danh-muc-san-pham/goi"
+    },
+    {
+      "id": "phu-kien",
+      "name": "Phụ kiện",
+      "group": "Phụ kiện",
+      "product_count_on_source": 32,
+      "slug": "phu-kien",
+      "source_url": "https://everon.com/danh-muc-san-pham/phu-kien"
+    }
+  ],
+  "note": "12 danh muc live tren everon.site (full catalog 2026-11-26). product_count_on_source = so SP multi-count trong data/products.json (1 SP co the thuoc nhieu danh muc). Rieng vo-goi ghi 122 = 118 SP hien co trong products.json + 4 SP vo-goi tua (-TUA) se gop sau; kiem chung lai khi gop xong.",
+  "schema_version": 1,
+  "source": {
+    "site": "everon.com",
+    "url": "https://everon.com/danh-muc-san-pham/bo-chan-ga"
+  },
+  "synced_at": "2026-11-26T13:46:00+07:00"
+}

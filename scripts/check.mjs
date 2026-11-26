@@ -4,6 +4,12 @@
 //    không có link href nào trỏ ra ngoài (trừ Zalo + tel:).
 // 2. Chạy thử app.js với DOM shim: render trang chủ / danh mục / chi tiết,
 //    đếm sản phẩm, nhãn Hết hàng, thử bộ lọc và chọn biến thể.
+// Full catalog 2026-11-26: 437 SP / 12 danh mục / 11 trang danh mục mới.
+// (433 SP sau export lần 1 + 4 SP vỏ gối tựa -TUA gộp sau; probe-gap +414
+// biến thể, union còn +361 cặp mới.)
+// Lưu ý: gói UI này không chứa trang chính sách, scraper, ảnh/logo
+// (những file đó đã có trên main) — các kiểm tra cần file đó sẽ SKIP
+// khi file vắng mặt, và chạy đủ khi check chạy trên repo đầy đủ.
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,9 +17,14 @@ import vm from "node:vm";
 
 const root = resolve(join(dirname(fileURLToPath(import.meta.url)), ".."));
 let failures = 0;
+let skipped = 0;
 function check(name, ok, extra) {
   console.log((ok ? "PASS" : "FAIL") + " — " + name + (extra ? " — " + extra : ""));
   if (!ok) failures++;
+}
+function skip(name, reason) {
+  console.log("SKIP — " + name + " — " + reason);
+  skipped++;
 }
 function walk(dir, out) {
   for (const f of readdirSync(dir)) {
@@ -23,6 +34,26 @@ function walk(dir, out) {
   }
   return out;
 }
+
+/* 12 danh mục live — số SP = multi-count trong data/products.json.
+   vo-goi: 122 (118 SP + 4 SP vỏ gối tựa -TUA đã gộp; oos 28 = 24 + 4 TUA).
+   tre-em oos 9 (probe-gap thêm biến thể còn hàng nên 2 SP hết hàng cũ
+   chuyển thành còn hàng). */
+const EXPECTED_CATEGORIES = [
+  { id: "bo-chan-ga", name: "Bộ chăn ga", group: "Chăn ga gối", count: 181, slug: "bo-chan-ga", oos: 32 },
+  { id: "chan-va-vo-chan", name: "Chăn và vỏ chăn", group: "Chăn ga gối", count: 114, slug: "chan-va-vo-chan", oos: 18 },
+  { id: "ga", name: "Ga", group: "Chăn ga gối", count: 9, slug: "ga", oos: 7 },
+  { id: "vo-goi", name: "Vỏ gối", group: "Chăn ga gối", count: 122, slug: "vo-goi", oos: 28 },
+  { id: "tre-em", name: "Trẻ em", group: "Chăn ga gối", count: 31, slug: "tre-em", oos: 9 },
+  { id: "bo-chan-ga-artemis", name: "Bộ chăn ga Artemis", group: "Chăn ga gối", count: 24, slug: "bo-chan-ga-artemis", oos: 6 },
+  { id: "dem", name: "Đệm", group: "Đệm", count: 13, slug: "dem", oos: 1 },
+  { id: "dem-k-bedding", name: "Đệm K-Bedding", group: "Đệm", count: 4, slug: "dem-k-bedding", oos: 0 },
+  { id: "k-bedding", name: "K-Bedding", group: "Đệm", count: 84, slug: "k-bedding", oos: 9 },
+  { id: "ruot", name: "Ruột gối / Ruột chăn", group: "Ruột & Gối", count: 22, slug: "ruot", oos: 2 },
+  { id: "goi", name: "Gối", group: "Ruột & Gối", count: 14, slug: "goi", oos: 4 },
+  { id: "phu-kien", name: "Phụ kiện", group: "Phụ kiện", count: 32, slug: "phu-kien", oos: 13 }
+];
+const CAT_SLUGS = EXPECTED_CATEGORIES.map((c) => c.slug);
 
 /* ---------- 1. Kiểm tra tĩnh ---------- */
 const files = walk(root, []).filter(
@@ -47,11 +78,12 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
 }
 /* Menu header (gọn 2026-11-26): chỉ còn Sản phẩm ▾ | Bộ sưu tập ▾,
    logo link về trang chủ; ô tìm kiếm ở header (?q=). Link dùng đường
-   dẫn tương đối theo từng trang (../ ở trang danh mục). */
+   dẫn tương đối theo từng trang ("../" ở trang danh mục). */
 for (const f of files.filter((x) => x.endsWith(".html"))) {
   const src = readFileSync(f, "utf8");
   const rel = f.replace(root + "/", "");
-  const prefix = rel === "bo-chan-ga/index.html" ? "../" : "";
+  const prefix = rel.includes("/") ? "../" : "";
+  const isCat = CAT_SLUGS.some((s) => rel === s + "/index.html");
   check("menu: có nút hamburger + nav#main-nav: " + rel, src.includes('id="nav-toggle"') && src.includes('id="main-nav"'));
   check("menu: có mục Sản phẩm và Bộ sưu tập: " + rel, src.includes('id="nav-san-pham"') && src.includes('id="nav-bo-suu-tap"'));
   check("menu: link Sản phẩm tới bo-chan-ga/: " + rel, src.includes('href="' + prefix + 'bo-chan-ga/" class="nav-link" id="nav-san-pham"'));
@@ -64,7 +96,10 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
   const navBlock = (src.match(/<nav class="main-nav"[\s\S]*?<\/nav>/) || [""])[0];
   check("header gọn: nav không còn Trang chủ/Liên hệ/Showroom: " + rel, !navBlock.includes(">Trang chủ<") && !navBlock.includes(">Liên hệ<") && !navBlock.includes('href="#showroom"') && !navBlock.includes(">Showroom<"));
   check("header gọn: logo vẫn link về trang chủ: " + rel, src.includes('class="brand" href="' + prefix + 'index.html"'));
-  check("header gọn: header có ô tìm kiếm (?q=): " + rel, src.includes('class="header-search"') && src.includes('name="q"') && src.includes('action="' + (rel === "bo-chan-ga/index.html" ? "./" : "bo-chan-ga/") + '"'));
+  check("header gọn: header có ô tìm kiếm (?q=): " + rel, src.includes('class="header-search"') && src.includes('name="q"') && src.includes('action="' + (isCat ? "./" : "bo-chan-ga/") + '"'));
+  if (isCat) {
+    check("danh mục: trang không còn class active tĩnh: " + rel, !/class="active">/.test(src));
+  }
 }
 const cssSrc = readFileSync(join(root, "assets/css/style.css"), "utf8");
 check("drawer: CSS có panel trượt từ phải (translateX + 100dvh + min(320px, 85vw))", cssSrc.includes("translateX(102%)") && cssSrc.includes("100dvh") && cssSrc.includes("min(320px, 85vw)"));
@@ -85,6 +120,7 @@ const indexSrc = readFileSync(join(root, "index.html"), "utf8");
 check("menu: trang chủ không còn mục Danh mục sản phẩm", !indexSrc.includes("cat-title") && !indexSrc.includes("category-grid"));
 check("header gọn: hero trang chủ không còn nút Zalo rời [data-zalo-buttons]", !(/<section class="hero">[\s\S]*?<\/section>/.exec(indexSrc) || [""])[0].includes("data-zalo-buttons"));
 check("xóa nút xem SP: hero trang chủ không còn nút \"Xem Bộ chăn ga\"", !(/<section class="hero">[\s\S]*?<\/section>/.exec(indexSrc) || [""])[0].includes("Xem Bộ chăn ga"));
+check("trang chủ: link Xem tất cả ghi 181 sản phẩm Bộ chăn ga (không còn 189)", indexSrc.includes("Xem tất cả 181 sản phẩm"));
 const catSrc = readFileSync(join(root, "bo-chan-ga/index.html"), "utf8");
 check("menu: trang danh mục không còn class active tĩnh Bộ chăn ga", !catSrc.includes('class="active">Bộ chăn ga'));
 const css = readFileSync(join(root, "assets/css/style.css"), "utf8");
@@ -119,9 +155,6 @@ for (const f of files.filter((x) => x.endsWith(".html"))) {
 }
 check("CSS có lưới 2 địa điểm", css.includes(".loc-grid") && css.includes(".loc-card"));
 /* ---------- Style Điệp Xuân (A–D) + 8 trang chính sách (2026-11-26) ---------- */
-/* A. Màu nhấn đỏ nâu gỉ sắt #A93C11 (diepxuan.com): đúng mã chỉ dùng
-   trên nền sáng (--rust, tương phản với trắng 6.28:1); trên nền navy
-   dùng tông sáng cùng họ --rust-light (5.25:1). Vàng gold cũ bỏ hẳn. */
 check("A: CSS có --rust #a93c11 (đúng mã diepxuan.com)", /--rust:\s*#a93c11/i.test(cssSrc));
 check("A: CSS có --rust-light cho chữ trên nền tối", cssSrc.includes("--rust-light:"));
 check("A: không còn dùng var(--gold)", !cssSrc.includes("var(--gold)"));
@@ -137,31 +170,40 @@ check("B: drawer hiện đủ cụm logo (chip Đ + EVERON/ĐIỆP XUÂN, không
 for (const f of files.filter((x) => x.endsWith(".html"))) {
   const src = readFileSync(f, "utf8");
   const rel = f.replace(root + "/", "");
-  check("logo header: lockup chip Đ + EVERON/ĐIỆP XUÂN xếp chồng: " + rel, src.includes('<span class="brand-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="34"'));
-  check("logo drawer: đầu drawer chip Đ + EVERON/ĐIỆP XUÂN: " + rel, src.includes('<span class="drawer-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + (rel === "bo-chan-ga/index.html" ? "../" : "") + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="30"'));
+  const pfx = rel.includes("/") ? "../" : "";
+  check("logo header: lockup chip Đ + EVERON/ĐIỆP XUÂN xếp chồng: " + rel, src.includes('<span class="brand-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + pfx + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="34"'));
+  check("logo drawer: đầu drawer chip Đ + EVERON/ĐIỆP XUÂN: " + rel, src.includes('<span class="drawer-text"><strong>EVERON</strong><em>ĐIỆP XUÂN</em></span>') && src.includes('src="' + pfx + 'assets/img/logo-diep-xuan.png" alt="Điệp Xuân" width="30"'));
   check("logo header: không còn brand-logo-dx / wordmark Everon trong header+drawer (footer-logo-dx giữ nguyên): " + rel, !src.includes("brand-logo-dx") && !src.includes("logo-everon-trang.png") && src.includes('class="footer-logo-dx"'));
   check("logo header: CSS ?v=5 (cache-bust sau khi đổi CSS): " + rel, src.includes("style.css?v=5"));
 }
-/* D + 8 trang chính sách. */
+/* D + 8 trang chính sách (file không có trong gói UI → SKIP). */
 const POLICY_PAGES = [
   "chinh-sach-van-chuyen.html", "chinh-sach-doi-tra.html", "chinh-sach-bao-hanh.html",
   "chinh-sach-bao-mat.html", "dieu-khoan-dich-vu.html", "huong-dan-mua-hang.html",
   "cau-hoi-thuong-gap.html", "he-thong-cua-hang.html",
 ];
 for (const p of POLICY_PAGES) {
-  check("chính sách: có trang " + p, existsSync(join(root, p)));
+  if (!existsSync(join(root, p))) {
+    skip("chính sách: có trang " + p, "không có trong gói UI (có trên main)");
+    continue;
+  }
+  check("chính sách: có trang " + p, true);
   const src = readFileSync(join(root, p), "utf8");
   check("chính sách: " + p + " có breadcrumb + khối hỗ trợ Zalo/gọi", src.includes('class="breadcrumb"') && src.includes("Cần hỗ trợ?") && src.includes("data-zalo-buttons") && src.includes('data-hotline'));
   check("chính sách: " + p + " không nhắc giỏ hàng/thanh toán online như luồng mua", !src.includes("thêm vào giỏ") && !src.includes("Tiết kiệm") && !/%\s*giảm|giá sale/i.test(src));
 }
-check("chính sách: trang hướng dẫn mua hàng viết theo luồng Zalo (4 bước, không giỏ hàng)", (() => {
-  const s = readFileSync(join(root, "huong-dan-mua-hang.html"), "utf8");
-  return ["Bước 1", "Bước 2", "Bước 3", "Bước 4"].every((b) => s.includes(b)) && s.includes("Nhắn Zalo") && !s.includes("thêm vào giỏ");
-})());
+if (existsSync(join(root, "huong-dan-mua-hang.html"))) {
+  check("chính sách: trang hướng dẫn mua hàng viết theo luồng Zalo (4 bước, không giỏ hàng)", (() => {
+    const s = readFileSync(join(root, "huong-dan-mua-hang.html"), "utf8");
+    return ["Bước 1", "Bước 2", "Bước 3", "Bước 4"].every((b) => s.includes(b)) && s.includes("Nhắn Zalo") && !s.includes("thêm vào giỏ");
+  })());
+} else {
+  skip("chính sách: trang hướng dẫn mua hàng viết theo luồng Zalo", "không có trong gói UI (có trên main)");
+}
 for (const f of files.filter((x) => x.endsWith(".html"))) {
   const src = readFileSync(f, "utf8");
   const rel = f.replace(root + "/", "");
-  const pfx = rel === "bo-chan-ga/index.html" ? "../" : "";
+  const pfx = rel.includes("/") ? "../" : "";
   check("D: footer có GPDKKD + địa chỉ xưởng: " + rel, src.includes("GPDKKD: 3100349022") && src.includes("Khu làng nghề Thuận Đức, Thuận Hoà, Thuận Đức, Đồng Hới, Quảng Bình"));
   check("D: footer có đủ 8 link chính sách + cửa hàng: " + rel, POLICY_PAGES.every((p) => src.includes('href="' + pfx + p + '"')));
 }
@@ -174,18 +216,54 @@ check("header gọn: app.js đọc ?q= vào ô lọc trang danh mục", appJs.in
 check("header gọn: app.js chèn nút liên hệ nổi 1 lần (contact-fab)", appJs.includes("contact-fab") && appJs.includes('document.createElement("div")'));
 check("header gọn: nút nổi mở ra đủ 4 lựa chọn (2 Zalo + 2 gọi)", ["https://zalo.me/0911825151", "https://zalo.me/0363089565", "tel:0911825151", "tel:0363089565"].every((h) => appJs.includes(h)));
 check("header gọn: nút nổi không thêm Messenger/Facebook", !/messenger|facebook/i.test(appJs));
-/* Scraper lấy toàn bộ ảnh: không còn giới hạn 3 ảnh trong media. */
-const scraper = readFileSync(join(root, "scripts/sync/scrape-full.mjs"), "utf8");
-check("scraper: lấy toàn bộ ảnh, không giới hạn 3 ảnh", scraper.includes("const media = base.images.map(") && !scraper.includes("base.images.slice(0, 3)"));
-/* Tăng dần thật sự theo lastmod (sửa 23/11/2026): regex sitemap đọc đúng
-   thứ tự thẻ, so sánh với lastmod đã lưu trong sync-state.json, --full
-   chỉ dùng cho quét toàn bộ. */
-check("scraper: tăng dần theo lastmod (so sánh sync-state.json)", scraper.includes("sync-state.json") && scraper.includes("isChanged") && scraper.includes("--full"));
-/* Sửa 25/11/2026 (PR #18): 2 loại combo "+ Vỏ gối ôm" nằm cuối danh sách
-   Bộ/Ga nên bước 2 phải thử hết boGaSets (không slice(0, 7)); ngân sách
-   26 và vòng vét combo bước 6a để combo có đủ size chuẩn. */
-check("scraper: thử hết loại Bộ/Ga, không slice(0, 7); ngân sách 26; có vòng vét combo",
-  !scraper.includes("boGaSets.slice(0, 7)") && scraper.includes("for (const st of boGaSets)") && scraper.includes("budget: 26") && scraper.includes("comboSets"));
+/* Scraper lấy toàn bộ ảnh: không còn giới hạn 3 ảnh trong media.
+   (v2.2 đa danh mục đổi tên biến base.images -> pageImages.)
+   File scraper không có trong gói UI → SKIP khi vắng mặt. */
+if (existsSync(join(root, "scripts/sync/scrape-full.mjs"))) {
+  const scraper = readFileSync(join(root, "scripts/sync/scrape-full.mjs"), "utf8");
+  check("scraper: lấy toàn bộ ảnh, không giới hạn 3 ảnh", (scraper.includes("const media = base.images.map(") || scraper.includes("const media = pageImages.map(")) && !scraper.includes("base.images.slice(0, 3)") && !scraper.includes("pageImages.slice(0, 3)"));
+  check("scraper: tăng dần theo lastmod (so sánh sync-state.json)", scraper.includes("sync-state.json") && scraper.includes("isChanged") && scraper.includes("--full"));
+  check("scraper: thử hết loại Bộ/Ga, không slice(0, 7); ngân sách 40 (v2.2); có vòng vét combo + quét chăn step 4/4b",
+    !scraper.includes("boGaSets.slice(0, 7)") && scraper.includes("for (const st of boGaSets)") && scraper.includes("budget: 40") && scraper.includes("comboSets") && scraper.includes("blanketSets"));
+  check("scraper: sửa SKU giả EC- ở biến thể mặc định (v2.2)", scraper.includes("/^EC-/") && scraper.includes("(ma gia EC-)"));
+} else {
+  skip("scraper: lấy toàn bộ ảnh / tăng dần lastmod / thử hết Bộ-Ga", "scripts/sync/scrape-full.mjs không có trong gói UI (có trên main)");
+}
+
+/* ---------- Full catalog: categories.json + 11 trang danh mục mới ---------- */
+const catsJson = JSON.parse(readFileSync(join(root, "data/categories.json"), "utf8"));
+const catsList = catsJson.categories || [];
+check("categories.json: đủ 12 danh mục", catsList.length === 12, "đếm được " + catsList.length);
+for (const exp of EXPECTED_CATEGORIES) {
+  const c = catsList.find((x) => x.id === exp.id);
+  check("categories.json: " + exp.id + " đúng tên/nhóm/slug/số SP/source_url",
+    !!c && c.name === exp.name && c.group === exp.group && c.slug === exp.slug &&
+    c.product_count_on_source === exp.count &&
+    typeof c.source_url === "string" && c.source_url.startsWith("https://everon.com/danh-muc-san-pham/"),
+    c ? JSON.stringify(c) : "thiếu");
+}
+check("categories.json: 4 nhóm đúng thứ tự số lượng 6/3/2/1",
+  ["Chăn ga gối", "Đệm", "Ruột & Gối", "Phụ kiện"].map((g) => catsList.filter((x) => x.group === g).length).join("/") === "6/3/2/1");
+check("app.js: không còn MENU_SOON / soonItemHTML / chữ Sắp có", !appJs.includes("MENU_SOON") && !appJs.includes("soonItemHTML") && !appJs.includes("Sắp có"));
+check("app.js: LIVE_CATEGORIES đủ 12 id", EXPECTED_CATEGORIES.every((c) => appJs.includes('"' + c.id + '"')));
+check("app.js: categoryUrl(slug) trả ROOT + slug + /", /function categoryUrl\(slug\) \{\s*return ROOT \+ \(slug \|\| "bo-chan-ga"\) \+ "\/";/.test(appJs));
+check("app.js: initCategory lọc theo window.__CATEGORY__", appJs.includes("window.__CATEGORY__") && appJs.includes("(p.category_ids || []).indexOf(catId) !== -1"));
+check("app.js: có bộ lọc loại generic (mattress_type / sub_type, >= 2 giá trị)", appJs.includes("mattress_type") && appJs.includes("sub_type") && appJs.includes("filter-type"));
+for (const exp of EXPECTED_CATEGORIES) {
+  const p = join(root, exp.slug, "index.html");
+  if (!existsSync(p)) {
+    check("trang danh mục: có " + exp.slug + "/index.html", false, "thiếu file");
+    continue;
+  }
+  check("trang danh mục: có " + exp.slug + "/index.html", true);
+  const src = readFileSync(p, "utf8");
+  check("trang danh mục: " + exp.slug + " khai báo __CATEGORY__ đúng", src.includes('window.__CATEGORY__ = "' + exp.id + '"'));
+  check("trang danh mục: " + exp.slug + " có <title> đúng số SP", src.includes("<title>") && src.includes(" — " + exp.count + " mẫu | Everon Điệp Xuân"));
+  check("trang danh mục: " + exp.slug + " có breadcrumb + h1", src.includes('class="breadcrumb"') && src.includes('<h1 class="page-title">'));
+  check("trang danh mục: " + exp.slug + " lead ghi đúng số SP", src.includes("Đầy đủ " + exp.count + " mẫu"));
+  check("trang danh mục: " + exp.slug + " có ô lọc loại ẩn #filter-type-wrap", src.includes('id="filter-type-wrap"') && src.includes('id="filter-type"'));
+  check("trang danh mục: " + exp.slug + " dùng style.css?v=5", src.includes('assets/css/style.css?v=5'));
+}
 
 /* ---------- 2. DOM shim + chạy thử app.js ---------- */
 const ENTITY_MAP = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
@@ -238,7 +316,7 @@ class MiniElement {
 }
 MiniElement.registry = {};
 
-function makeEnv({ page, search, hover, mobile }) {
+function makeEnv({ page, search, hover, mobile, category }) {
   MiniElement.registry = {};
   const byId = {};
   const doc = {
@@ -262,6 +340,7 @@ function makeEnv({ page, search, hover, mobile }) {
   sandbox.innerWidth = mobile ? 390 : 1280;
   sandbox.window.__ROOT__ = page === "category" ? "../" : "./";
   sandbox.window.__DATA_BASE__ = page === "category" ? "../data/" : "data/";
+  if (category) sandbox.window.__CATEGORY__ = category;
   /* Giả lập thiết bị: mặc định là cảm ứng (không hover) để kiểm tra
      bấm mở menu; truyền hover: true để giả lập desktop có chuột. */
   sandbox.matchMedia = (q) => ({ matches: (hover === true && q === "(hover: hover)") || (mobile === true && q === "(max-width: 720px)"), media: q, addListener() {}, removeListener() {} });
@@ -279,17 +358,18 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* Trang chủ */
 {
-  const { byId, doc } = makeEnv({ page: "home", search: "" });
+  const { byId, doc, sandbox } = makeEnv({ page: "home", search: "" });
   await tick(300);
   const feat = byId["featured-grid"].innerHTML;
   check("trang chủ: 8 sản phẩm nổi bật", (feat.match(/<article class="card">/g) || []).length === 8);
   check("trang chủ: không có link ra ngoài trong HTML render", !/href="https?:\/\/(?!zalo\.me)/.test(feat));
-  /* Menu "Sản phẩm" render từ data: 4 nhóm, Bộ chăn ga là link duy
-     nhất, 13 mục còn lại là "Sắp có" (không phải thẻ <a>). */
+  /* Menu "Sản phẩm" render từ data: 4 nhóm, 12 mục đều là link thật,
+     không còn mục "Sắp có". */
   const menu = byId["menu-san-pham"].innerHTML;
-  check("menu Sản phẩm: đủ 4 nhóm Chăn ga gối / Đệm / Ruột / Phụ kiện", ["Chăn ga gối", "Đệm", "Ruột", "Phụ kiện"].every((g) => menu.includes(g)));
-  check("menu Sản phẩm: Bộ chăn ga là link duy nhất tới bo-chan-ga/", (menu.match(/<a /g) || []).length === 1 && menu.includes('href="./bo-chan-ga/"') && menu.includes("Bộ chăn ga"));
-  check("menu Sản phẩm: 13 mục Sắp có", (menu.match(/Sắp có/g) || []).length === 13);
+  check("menu Sản phẩm: đủ 4 nhóm Chăn ga gối / Đệm / Ruột & Gối / Phụ kiện", ["Chăn ga gối", "Đệm", "Ruột &amp; Gối", "Phụ kiện"].every((g) => menu.includes(g)));
+  check("menu Sản phẩm: đủ 12 link thật tới 12 trang danh mục", (menu.match(/<a /g) || []).length === 12 && EXPECTED_CATEGORIES.every((c) => menu.includes('href="./' + c.slug + '/"')));
+  check("menu Sản phẩm: không còn chữ Sắp có", !menu.includes("Sắp có"));
+  check("menu: categoryUrl('dem') trả ./dem/ (trang chủ)", sandbox.window.EveronUI.categoryUrl("dem") === "./dem/");
   check("menu: trang chủ thì Sản phẩm không active", !byId["nav-san-pham"].classList.contains("active"));
   /* Bấm mục cha (môi trường kiểm thử giả lập cảm ứng): lần 1 mở
      dropdown, không chuyển trang; lần 2 thì theo link. */
@@ -343,7 +423,7 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   const { byId } = makeEnv({ page: "home", search: "" });
   await tick(300);
   const menu = byId["menu-san-pham"].innerHTML;
-  check("accordion: đủ 4 tiêu đề nhóm kèm số lượng (7/4/2/1)", ["Chăn ga gối", "(7)", "Đệm", "(4)", "Ruột", "(2)", "Phụ kiện", "(1)"].every((x) => menu.includes(x)));
+  check("accordion: đủ 4 tiêu đề nhóm kèm số lượng (6/3/2/1)", ["Chăn ga gối", "(6)", "Đệm", "(3)", "Ruột &amp; Gối", "(2)", "Phụ kiện", "(1)"].every((x) => menu.includes(x)));
   check("accordion: tiêu đề nhóm là nút bấm (4 nút menu-group-toggle)", (menu.match(/menu-group-toggle/g) || []).length === 4);
   const panel = byId["menu-san-pham"];
   const g1 = new MiniElement("div");
@@ -401,22 +481,24 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   check("locations: chỉ 241 có đánh giá sao", (locHtml.match(/★/g) || []).length === 1 && locHtml.includes("4,7★"));
 }
 
-/* Trang danh mục */
+/* Trang danh mục Bộ chăn ga (đầy đủ bộ lọc) */
 {
-  const { byId } = makeEnv({ page: "category", search: "" });
+  const { byId, sandbox } = makeEnv({ page: "category", search: "", category: "bo-chan-ga" });
   await tick(300);
   const grid = byId["product-grid"];
   const cards = (grid.innerHTML.match(/<article class="card">/g) || []).length;
-  check("danh mục: render đủ 189 sản phẩm", cards === 189, "đếm được " + cards);
+  check("danh mục: render đủ 181 sản phẩm Bộ chăn ga", cards === 181, "đếm được " + cards);
   const oos = (grid.innerHTML.match(/Hết hàng/g) || []).length;
-  check("danh mục: 33 nhãn Hết hàng", oos === 33, "đếm được " + oos);
-  check("danh mục: số lượng hiển thị 189 / 189", byId["result-count"].textContent.includes("189 / 189"));
+  check("danh mục: 32 nhãn Hết hàng", oos === 32, "đếm được " + oos);
+  check("danh mục: số lượng hiển thị 181 / 181", byId["result-count"].textContent.includes("181 / 181"));
   check("danh mục: EPM22064 hiện giá gốc 4.980.000đ", grid.innerHTML.includes("EPM22064") && grid.innerHTML.includes("4.980.000đ"));
   check("danh mục: không hiện giá sale 2.739.000đ", !grid.innerHTML.includes("2.739.000đ"));
   check("giá gốc: không có nhãn % giảm trong danh sách", !/>−\d+%/.test(grid.innerHTML));
   check("giá gốc: không có giá gạch ngang trong danh sách", !grid.innerHTML.includes('class="old"'));
   check("ảnh: thẻ dùng đường dẫn tự lưu assets/img/products/", grid.innerHTML.includes('src="assets/img/products/'));
   check("ảnh: thẻ có data-fallback về nguồn", grid.innerHTML.includes('data-fallback="https://everon.com/'));
+  check("menu: categoryUrl('dem') trả ../dem/ (trang danh mục)", sandbox.window.EveronUI.categoryUrl("dem") === "../dem/");
+  check("danh mục: Bộ chăn ga không có ô lọc loại (không có mattress_type/sub_type lọc được)", byId["filter-type"].children.length === 0 && byId["filter-type-wrap"].style.display !== "");
   const q = byId["filter-q"];
   q.value = "EPM22064";
   q.dispatch("input");
@@ -428,7 +510,7 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   stock.value = "out";
   stock.dispatch("change");
   await tick(50);
-  check("lọc: hết hàng ra 33 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 33);
+  check("lọc: hết hàng ra 32 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 32);
   stock.value = "";
   stock.dispatch("change");
   const col = byId["filter-collection"];
@@ -437,7 +519,11 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   col.value = "everon-2027";
   col.dispatch("change");
   await tick(50);
-  check("lọc: Everon 2027 ra 25 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 25);
+  check("lọc: Everon 2027 ra 24 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 24);
+  col.value = "bst-chan-ga-2022";
+  col.dispatch("change");
+  await tick(50);
+  check("lọc: Bộ chăn ga 2022 ra 32 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 32);
   col.value = "";
   col.dispatch("change");
   const sort = byId["filter-sort"];
@@ -449,28 +535,89 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   check("menu: trang danh mục thì Sản phẩm active", byId["nav-san-pham"].classList.contains("active"));
 }
 
+/* 12 trang danh mục: mỗi trang chỉ hiện đúng sản phẩm của mình */
+for (const exp of EXPECTED_CATEGORIES) {
+  const { byId } = makeEnv({ page: "category", search: "", category: exp.id });
+  await tick(300);
+  const grid = byId["product-grid"];
+  const n = (grid.innerHTML.match(/<article class="card">/g) || []).length;
+  const want = exp.dataCount !== undefined ? exp.dataCount : exp.count;
+  check("danh mục " + exp.id + ": render " + want + " sản phẩm", n === want, "đếm được " + n);
+  const oos = (grid.innerHTML.match(/Hết hàng/g) || []).length;
+  check("danh mục " + exp.id + ": " + exp.oos + " nhãn Hết hàng", oos === exp.oos, "đếm được " + oos);
+  check("danh mục " + exp.id + ": số lượng hiển thị " + want + " / " + want, byId["result-count"].textContent.includes(want + " / " + want));
+}
+
+/* Bộ lọc loại: Đệm (mattress_type) và Ruột (sub_type) */
+{
+  const { byId } = makeEnv({ page: "category", search: "", category: "dem" });
+  await tick(300);
+  const grid = byId["product-grid"];
+  const type = byId["filter-type"];
+  check("lọc loại: Đệm có đủ 4 loại (lò xo/bông ép/cao su/foam)", type.children.length === 4 && ["lo-xo", "bong-ep", "cao-su", "foam"].every((v) => type.children.some((o) => o.value === v)));
+  check("lọc loại: Đệm hiện ô lọc loại", byId["filter-type-wrap"].style.display === "");
+  type.value = "bong-ep";
+  type.dispatch("change");
+  await tick(50);
+  check("lọc loại: Đệm bông ép ra 6 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 6);
+  type.value = "lo-xo";
+  type.dispatch("change");
+  await tick(50);
+  check("lọc loại: Đệm lò xo ra 2 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 2);
+}
+{
+  const { byId } = makeEnv({ page: "category", search: "", category: "ruot" });
+  await tick(300);
+  const grid = byId["product-grid"];
+  const type = byId["filter-type"];
+  check("lọc loại: Ruột có đủ 2 loại (ruột gối/ruột chăn)", type.children.length === 2 && ["ruot-goi", "ruot-chan"].every((v) => type.children.some((o) => o.value === v)));
+  check("lọc loại: Ruột hiện ô lọc loại", byId["filter-type-wrap"].style.display === "");
+  type.value = "ruot-goi";
+  type.dispatch("change");
+  await tick(50);
+  check("lọc loại: Ruột gối ra 14 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 14);
+  type.value = "ruot-chan";
+  type.dispatch("change");
+  await tick(50);
+  check("lọc loại: Ruột chăn ra 8 sản phẩm", (grid.innerHTML.match(/<article class="card">/g) || []).length === 8);
+}
+{
+  const { byId } = makeEnv({ page: "category", search: "", category: "dem-k-bedding" });
+  await tick(300);
+  check("lọc loại: Đệm K-Bedding chỉ có 1 loại nên ẩn ô lọc", byId["filter-type"].children.length === 0 && byId["filter-type-wrap"].style.display !== "");
+}
+
 /* Trang danh mục: link ?collection= từ menu Bộ sưu tập */
 {
-  const { byId } = makeEnv({ page: "category", search: "?collection=bst-cutie-2027" });
+  const { byId } = makeEnv({ page: "category", search: "?collection=everon-2027", category: "bo-chan-ga" });
   await tick(300);
-  check("?collection=: Cutie 2027 lọc ra 3 sản phẩm", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 3);
+  check("?collection=: Everon 2027 trên Bộ chăn ga lọc ra 24 sản phẩm", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 24);
+  check("?collection=: ô chọn bộ sưu tập đã chọn Everon 2027", byId["filter-collection"].value === "everon-2027");
+}
+{
+  const { byId } = makeEnv({ page: "category", search: "?collection=bst-cutie-2027", category: "tre-em" });
+  await tick(300);
+  check("?collection=: Cutie 2027 trên Trẻ em lọc ra 3 sản phẩm", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 3);
   check("?collection=: ô chọn bộ sưu tập đã chọn Cutie 2027", byId["filter-collection"].value === "bst-cutie-2027");
 }
 {
-  const { byId } = makeEnv({ page: "category", search: "?collection=khong-co" });
+  const { byId } = makeEnv({ page: "category", search: "?collection=khong-co", category: "bo-chan-ga" });
   await tick(300);
-  check("?collection=: mã lạ thì bỏ qua, hiện đủ 189", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 189);
+  check("?collection=: mã lạ thì bỏ qua, hiện đủ 181", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 181);
 }
 
 /* Trang danh mục: tìm kiếm từ ô tìm kiếm ở header (?q=) */
 {
-  const { byId } = makeEnv({ page: "category", search: "?q=EST25024" });
+  const { byId } = makeEnv({ page: "category", search: "?q=EST25024", category: "bo-chan-ga" });
   await tick(300);
   check("?q=: tìm EST25024 từ header ra 1 sản phẩm", (byId["product-grid"].innerHTML.match(/<article class="card">/g) || []).length === 1);
   check("?q=: ô lọc trang danh mục đã điền EST25024", byId["filter-q"].value === "EST25024");
 }
 
-/* Trang chi tiết EPM22064 */
+/* Trang chi tiết EPM22064 — dữ liệu v2 (cào lại 2026-11-26): 9 biến
+   thể (thêm combo Vỏ gối ôm/nằm) và 5 ảnh (không còn 4 biến thể / 3
+   ảnh như bản cào cũ). Giá gốc mặc định và giá khi đổi biến thể giữ
+   nguyên như bản cũ (4.980.000đ / 5.640.000đ). */
 {
   const { byId, sandbox, doc } = makeEnv({ page: "detail", search: "?sku=EPM22064" });
   await tick(300);
@@ -481,7 +628,7 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   check("giá gốc: chi tiết không có nhãn % giảm, không có giá gạch ngang, không có dòng Tiết kiệm", !/>−\d+%/.test(box.innerHTML) && !box.innerHTML.includes('class="old"') && !box.innerHTML.includes("Tiết kiệm"));
   check("giá gốc: bảng giá chỉ có 1 cột Giá gốc", box.innerHTML.includes("<th>Giá gốc</th>") && !box.innerHTML.includes("<th>Giá</th>"));
   check("chi tiết: có nút chọn Bộ chăn bốn mùa", box.innerHTML.includes("Bộ chăn bốn mùa"));
-  check("chi tiết: có bảng giá 4 biến thể", (box.innerHTML.match(/<tr class="/g) || []).length === 4);
+  check("chi tiết: có bảng giá 9 biến thể", (box.innerHTML.match(/<tr class="/g) || []).length === 9);
   check("chi tiết: mô tả đã cắt phần rác", !box.innerHTML.includes("Chính sách giao hàng"));
   check("chi tiết: có nút Nhắn Zalo kèm mã SP", box.innerHTML.includes("zalo.me") && box.innerHTML.includes("EPM22064"));
   check("chi tiết: ảnh chính dùng đường dẫn tự lưu, có fallback", box.innerHTML.includes('src="assets/img/products/') && box.innerHTML.includes('data-fallback="https://everon.com/'));
@@ -505,21 +652,21 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
   await tick(50);
   check("chi tiết: đổi biến thể cập nhật giá gốc 5.640.000đ", wrap.innerHTML.includes("5.640.000đ") && !wrap.innerHTML.includes("3.102.000đ"));
   const gal = doc.getElementById("gallery");
-  check("thư viện: có nút Trước/Sau và số đếm 1 / 3", box.innerHTML.includes('data-gal="prev"') && box.innerHTML.includes('data-gal="next"') && box.innerHTML.includes("1 / 3"));
+  check("thư viện: có nút Trước/Sau và số đếm 1 / 5", box.innerHTML.includes('data-gal="prev"') && box.innerHTML.includes('data-gal="next"') && box.innerHTML.includes("1 / 5"));
   check("thư viện: ảnh chính có nút xem lớn", box.innerHTML.includes('data-gal="zoom"'));
-  check("thư viện: đủ 3 ảnh nhỏ", (box.innerHTML.match(/data-gal-idx="/g) || []).length === 3);
+  check("thư viện: đủ 5 ảnh nhỏ", (box.innerHTML.match(/data-gal-idx="/g) || []).length === 5);
   const fakeNext = { getAttribute: () => "next" };
   box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal]" ? fakeNext : null) } });
   await tick(50);
-  check("thư viện: bấm Sau sang ảnh 2 / 3", gal.innerHTML.includes("2 / 3") && gal.innerHTML.includes("img-2.webp"));
+  check("thư viện: bấm Sau sang ảnh 2 / 5", gal.innerHTML.includes("2 / 5") && gal.innerHTML.includes("img-2.webp"));
   const fakeThumb3 = { getAttribute: () => "2" };
   box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal-idx]" ? fakeThumb3 : null) } });
   await tick(50);
-  check("thư viện: bấm ảnh nhỏ thứ 3 sang ảnh 3 / 3", gal.innerHTML.includes("3 / 3") && gal.innerHTML.includes("img-3.webp"));
+  check("thư viện: bấm ảnh nhỏ thứ 3 sang ảnh 3 / 5", gal.innerHTML.includes("3 / 5") && gal.innerHTML.includes("img-3.webp"));
   const fakeZoom = { getAttribute: () => "zoom" };
   box.dispatch("click", { target: { closest: (sel) => (sel === "[data-gal]" ? fakeZoom : null) } });
   await tick(50);
-  check("thư viện: bấm xem lớn không lỗi (môi trường kiểm thử không có body thật)", gal.innerHTML.includes("3 / 3"));
+  check("thư viện: bấm xem lớn không lỗi (môi trường kiểm thử không có body thật)", gal.innerHTML.includes("3 / 5"));
   const dirty = sandbox.window.EveronUI.cleanDescription("Mô tả thật. Đánh giá ( 0 ) Chính sách giao hàng xyz");
   check("cleanDescription cắt đúng phần rác", dirty === "Mô tả thật.");
 }
@@ -534,11 +681,17 @@ const tick = (ms) => new Promise((r) => setTimeout(r, ms));
 /* Dữ liệu */
 {
   const products = JSON.parse(readFileSync(join(root, "data/products.json"), "utf8"));
-  check("data: 189 sản phẩm", products.length === 189);
-  check("data: 33 hết hàng", products.filter((p) => p.status === "out_of_stock").length === 33);
+  check("data: 437 sản phẩm", products.length === 437, "đếm được " + products.length);
+  check("data: 95 hết hàng", products.filter((p) => p.status === "out_of_stock").length === 95, "đếm được " + products.filter((p) => p.status === "out_of_stock").length);
   check("data: mọi SP có ảnh cover", products.every((p) => (p.media || []).some((m) => m.source_url)));
-  check("data: slug duy nhất", new Set(products.map((p) => p.slug)).size === 189);
+  check("data: slug duy nhất", new Set(products.map((p) => p.slug)).size === products.length);
+  check("data: mọi SP thuộc ít nhất 1 danh mục", products.every((p) => (p.category_ids || []).length > 0));
+  for (const exp of EXPECTED_CATEGORIES) {
+    const n = products.filter((p) => (p.category_ids || []).includes(exp.id)).length;
+    const want = exp.dataCount !== undefined ? exp.dataCount : exp.count;
+    check("data: danh mục " + exp.id + " có " + want + " SP", n === want, "đếm được " + n);
+  }
 }
 
-console.log(failures === 0 ? "\nTẤT CẢ KIỂM TRA ĐẠT." : "\nCÓ " + failures + " KIỂM TRA LỖI.");
+console.log(failures === 0 ? "\nTẤT CẢ KIỂM TRA ĐẠT." + (skipped ? " (" + skipped + " kiểm tra SKIP vì file không có trong gói UI.)" : "") : "\nCÓ " + failures + " KIỂM TRA LỖI." + (skipped ? " (" + skipped + " SKIP.)" : ""));
 process.exit(failures === 0 ? 0 : 1);

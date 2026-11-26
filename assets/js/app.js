@@ -83,8 +83,10 @@
   function productUrl(p) {
     return ROOT + "san-pham.html?sku=" + encodeURIComponent(p.sku);
   }
-  function categoryUrl() {
-    return ROOT + "bo-chan-ga/";
+  /* Đường dẫn trang danh mục theo slug (data/categories.json). Mặc định
+     không đối số = Bộ chăn ga (giữ tương thích với code cũ). */
+  function categoryUrl(slug) {
+    return ROOT + (slug || "bo-chan-ga") + "/";
   }
   function zaloUrl(phone, message) {
     var u = "https://zalo.me/" + String(phone).replace(/\s/g, "");
@@ -266,6 +268,18 @@
     });
   }
 
+  /* Nhãn loại đệm (attributes.mattress_type) và loại ruột
+     (attributes.sub_type) — dùng ở bộ lọc trang danh mục. */
+  var MATTRESS_TYPE_LABELS = {
+    "lo-xo": "Đệm lò xo",
+    "bong-ep": "Đệm bông ép",
+    "cao-su": "Đệm cao su",
+    "foam": "Đệm foam"
+  };
+  var SUB_TYPE_LABELS = {
+    "ruot-goi": "Ruột gối",
+    "ruot-chan": "Ruột chăn"
+  };
   /* ---------- menu header ---------- */
   /* Màn cảm ứng không có hover: bấm mục cha thì mở dropdown (bấm lần
      nữa mới theo link). Desktop có hover: menu mở bằng hover /
@@ -274,41 +288,39 @@
   try {
     CAN_HOVER = !window.matchMedia || window.matchMedia("(hover: hover)").matches;
   } catch (e) { CAN_HOVER = true; }
-  /* Danh mục đang bán (có trang danh mục): menu hiện thành link.
-     Khi một danh mục mới lên sóng, thêm id của nó vào đây (và thêm
-     vào data/categories.json) là menu tự đổi thành link. */
-  var LIVE_CATEGORIES = ["bo-chan-ga"];
-  /* Các nhóm chưa có dữ liệu (khai báo tĩnh): chỉ hiện tên + tag
-     "Sắp có", không phải link. Khi danh mục lên sóng, chuyển mục đó
-     sang LIVE_CATEGORIES rồi bỏ khỏi danh sách này. */
-  var MENU_SOON = [
-    { group: "Đệm", items: ["Đệm cao su", "Đệm bông ép", "Đệm foam", "Đệm lò xo"] },
-    { group: "Ruột", items: ["Ruột gối", "Ruột chăn"] },
-    { group: "Phụ kiện", items: ["Phụ kiện"] }
-  ];
-  function soonItemHTML(name) {
-    return '<li><span class="menu-soon">' + esc(name) + ' <span class="tag-soon">Sắp có</span></span></li>';
-  }
+  /* Toàn bộ 12 danh mục đã live (full catalog 2026-11-26): menu hiện
+     thành link thật tới trang danh mục. */
+  var LIVE_CATEGORIES = ["bo-chan-ga", "chan-va-vo-chan", "ga", "vo-goi", "tre-em", "bo-chan-ga-artemis", "dem", "dem-k-bedding", "k-bedding", "ruot", "goi", "phu-kien"];
+  /* Thứ tự 4 nhóm trong menu Sản phẩm (khớp trường group trong
+     data/categories.json). */
+  var MENU_GROUP_ORDER = ["Chăn ga gối", "Đệm", "Ruột & Gối", "Phụ kiện"];
   /* Tiêu đề nhóm là nút bấm: trên mobile (drawer) bấm để mở/đóng các
      mục con; trên desktop các mục con luôn hiện nên bấm không đổi gì
      nhìn thấy. Số lượng trong ngoặc chỉ hiện trên mobile (CSS). */
   function menuGroupHTML(title, itemsHTML, count) {
     return '<div class="menu-group"><button type="button" class="menu-group-toggle" aria-expanded="false">' + esc(title) + ' <span class="menu-count">(' + count + ')</span> <span class="caret" aria-hidden="true">▾</span></button><ul class="menu-group-items">' + itemsHTML + "</ul></div>";
   }
-  /* Dropdown "Sản phẩm": nhóm Chăn ga gối lấy từ data/categories.json
-     (7 mục), 3 nhóm còn lại lấy từ MENU_SOON ở trên. */
+  /* Dropdown "Sản phẩm": render data-driven từ data/categories.json
+     theo trường group (4 nhóm, mỗi mục là link thật tới trang danh
+     mục qua categoryUrl). Danh mục chưa live (không có trong
+     LIVE_CATEGORIES) thì bỏ qua. */
   function productsMenuHTML(data) {
-    var chanGaGoi = (data.categories.categories || []).map(function (c) {
-      if (LIVE_CATEGORIES.indexOf(c.id) !== -1) {
-        return '<li><a href="' + esc(categoryUrl()) + '">' + esc(c.name) + "</a></li>";
-      }
-      return soonItemHTML(c.name);
-    }).join("");
-    var soon = MENU_SOON.map(function (g) {
-      return menuGroupHTML(g.group, g.items.map(soonItemHTML).join(""), g.items.length);
-    }).join("");
-    return '<div class="menu-col">' + menuGroupHTML("Chăn ga gối", chanGaGoi, (data.categories.categories || []).length) + "</div>" +
-      '<div class="menu-col">' + soon + "</div>";
+    var cats = data.categories.categories || [];
+    var cols = MENU_GROUP_ORDER.map(function (group) {
+      var items = cats.filter(function (c) {
+        return c.group === group && LIVE_CATEGORIES.indexOf(c.id) !== -1;
+      }).map(function (c) {
+        return '<li><a href="' + esc(categoryUrl(c.slug)) + '">' + esc(c.name) + "</a></li>";
+      }).join("");
+      if (!items) return "";
+      /* Đếm số mục: nhóm Chăn ga gối và Đệm sang cột 1, 2 nhóm còn
+         lại sang cột 2 (giữ bố cục 2 cột như trước). */
+      return menuGroupHTML(group, items, cats.filter(function (c) { return c.group === group; }).length);
+    });
+    var col1 = cols.slice(0, 2).join("");
+    var col2 = cols.slice(2).join("");
+    return '<div class="menu-col">' + col1 + "</div>" +
+      '<div class="menu-col">' + col2 + "</div>";
   }
   function closeMenus() {
     ["nav-san-pham", "nav-bo-suu-tap"].forEach(function (id) {
@@ -599,7 +611,15 @@
   };
   function initCategory(data) {
     var site = data.site;
-    var products = data.products;
+    /* Trang danh mục nào đang mở: mỗi trang danh mục khai báo
+       window.__CATEGORY__ trong <head>. Mặc định bo-chan-ga để trang
+       cũ không khai báo vẫn chạy. Chỉ giữ sản phẩm có category_ids
+       chứa danh mục này — không lọc thì trang Bộ chăn ga sẽ hiện cả
+       437 sản phẩm của toàn catalog. */
+    var catId = window.__CATEGORY__ || "bo-chan-ga";
+    var products = data.products.filter(function (p) {
+      return (p.category_ids || []).indexOf(catId) !== -1;
+    });
     var grid = document.getElementById("product-grid");
     var countEl = document.getElementById("result-count");
     var emptyEl = document.getElementById("empty-state");
@@ -607,9 +627,50 @@
     var colSelect = document.getElementById("filter-collection");
     var stockSelect = document.getElementById("filter-stock");
     var sortSelect = document.getElementById("filter-sort");
+    /* Lọc theo loại (generic): ô chọn #filter-type chỉ hiện khi sản
+       phẩm của danh mục hiện tại có >= 2 giá trị khác nhau của
+       attributes.mattress_type (Đệm: lò xo / bông ép / cao su / foam)
+       hoặc — riêng danh mục Ruột — của attributes.sub_type
+       (ruot-goi / ruot-chan). Các danh mục khác (sub_type là mã nội
+       bộ như bo-chan-ga, phu-kien-dem...) không hiện ô này. */
+    var typeSelect = document.getElementById("filter-type");
+    var typeWrap = document.getElementById("filter-type-wrap");
+    var typeAttr = null;
+    var typeLabels = null;
+    var typeLabelText = "";
+    (function () {
+      var mtCounts = {};
+      var stCounts = {};
+      products.forEach(function (p) {
+        var mt = p.attributes && p.attributes.mattress_type;
+        if (mt) mtCounts[mt] = (mtCounts[mt] || 0) + 1;
+        var st = p.attributes && p.attributes.sub_type;
+        if (st) stCounts[st] = (stCounts[st] || 0) + 1;
+      });
+      if (Object.keys(mtCounts).length >= 2) {
+        typeAttr = "mattress_type";
+        typeLabels = MATTRESS_TYPE_LABELS;
+        typeLabelText = "Loại đệm";
+      } else if (catId === "ruot" && Object.keys(stCounts).length >= 2) {
+        typeAttr = "sub_type";
+        typeLabels = SUB_TYPE_LABELS;
+        typeLabelText = "Loại ruột";
+      }
+      if (!typeAttr || !typeSelect) return;
+      var counts = typeAttr === "mattress_type" ? mtCounts : stCounts;
+      Object.keys(counts).sort().forEach(function (t) {
+        var opt = document.createElement("option");
+        opt.value = t;
+        opt.textContent = (typeLabels[t] || t) + " (" + counts[t] + ")";
+        typeSelect.appendChild(opt);
+      });
+      var typeLabel = typeWrap ? typeWrap.querySelector("label") : null;
+      if (typeLabel) typeLabel.textContent = typeLabelText;
+      if (typeWrap) typeWrap.style.display = "";
+    })();
 
     /* Bộ sưu tập: chỉ đưa những bộ sưu tập có ý nghĩa lọc
-       (bỏ 2 bộ sưu tập mà cả 189 sản phẩm đều thuộc về). */
+       (bỏ bộ sưu tập mà cả danh mục hiện tại đều thuộc về). */
     var colCounts = {};
     products.forEach(function (p) {
       (p.collection_ids || []).forEach(function (c) {
@@ -651,9 +712,11 @@
       var col = colSelect.value;
       var stock = stockSelect.value;
       var sort = sortSelect.value;
+      var typeVal = typeSelect ? typeSelect.value : "";
       var list = products.filter(function (p) {
         if (q && norm(p.name + " " + p.sku).indexOf(q) === -1) return false;
         if (col && (p.collection_ids || []).indexOf(col) === -1) return false;
+        if (typeVal && typeAttr && !(p.attributes && p.attributes[typeAttr] === typeVal)) return false;
         if (stock === "in" && isOOS(p)) return false;
         if (stock === "out" && !isOOS(p)) return false;
         return true;
@@ -673,7 +736,8 @@
       bindImageFallbacks(grid);
       emptyEl.style.display = list.length ? "none" : "block";
     }
-    [qInput, colSelect, stockSelect, sortSelect].forEach(function (el) {
+    [qInput, colSelect, stockSelect, sortSelect, typeSelect].forEach(function (el) {
+      if (!el) return;
       el.addEventListener("input", applyFilters);
       el.addEventListener("change", applyFilters);
     });
@@ -1003,6 +1067,7 @@
     cleanDescription: cleanDescription,
     norm: norm,
     vnd: vnd,
+    categoryUrl: categoryUrl,
     defaultVariant: defaultVariant,
     displayPriceOfProduct: displayPriceOfProduct,
     displayPriceAmount: displayPriceAmount,
