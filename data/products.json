@@ -390,7 +390,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 56
+        "stock": 55
       }
     ],
     "media": [
@@ -543,9 +543,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/track-tail-cpm27202",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:22:12.352Z",
+    "synced_at": "2026-11-26T02:42:44.658Z",
     "status": "active"
   },
   {
@@ -1058,7 +1058,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 55
+        "stock": 45
       },
       {
         "sku": "EBGCTBM2022ESTMC27012",
@@ -1074,7 +1074,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 21
+        "stock": 19
       },
       {
         "sku": "EBGC1620ESTMC27012",
@@ -1106,7 +1106,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 20
+        "stock": 18
       },
       {
         "sku": "EBBM1620ESTMC27012",
@@ -1218,7 +1218,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 43
+        "stock": 41
       },
       {
         "sku": "EVG5070ESTMC27012",
@@ -1387,9 +1387,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/pinnate-estmc27012",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:24:43.936Z",
+    "synced_at": "2026-11-26T02:44:06.592Z",
     "status": "active"
   },
   {
@@ -1456,7 +1456,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 58
+        "stock": 53
       },
       {
         "sku": "EBGCTBM2022ESTMC27002",
@@ -1632,7 +1632,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 232
+        "stock": 227
       },
       {
         "sku": "EVG5070ESTMC27002",
@@ -1817,9 +1817,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/espirit-estmc27002",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:26:11.948Z",
+    "synced_at": "2026-11-26T02:45:28.807Z",
     "status": "active"
   },
   {
@@ -2047,9 +2047,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/melange-bpc703",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:27:38.095Z",
+    "synced_at": "2026-11-26T02:46:14.260Z",
     "status": "active"
   },
   {
@@ -2095,7 +2095,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 20
+        "stock": 18
       },
       {
         "sku": "EVG80100BPC702",
@@ -2154,9 +2154,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/gingham-bpc702",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:28:26.804Z",
+    "synced_at": "2026-11-26T02:47:00.096Z",
     "status": "active"
   },
   {
@@ -2421,9 +2421,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/horizon-bpc701",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:29:29.093Z",
+    "synced_at": "2026-11-26T02:48:04.108Z",
     "status": "active"
   },
   {
@@ -2736,7 +2736,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 3
+        "stock": 1
       },
       {
         "sku": "EBGCVC1820BSL713",
@@ -2939,9 +2939,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/cloud-bsl713",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:31:24.075Z",
+    "synced_at": "2026-11-26T02:48:58.826Z",
     "status": "active"
   },
   {
@@ -2987,7 +2987,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 308
+        "stock": 302
       },
       {
         "sku": "EVG5070BSL712",
@@ -3062,9 +3062,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/sandy-bsl712",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:32:13.235Z",
+    "synced_at": "2026-11-26T02:49:44.081Z",
     "status": "active"
   },
   {
@@ -3110,7 +3110,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 340
+        "stock": 332
       },
       {
         "sku": "EVG5070BSL711",
@@ -3142,7 +3142,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 182
+        "stock": 177
       }
     ],
     "media": [
@@ -3169,9 +3169,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/dusty-bsl710-copy-21004",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:32:47.188Z",
+    "synced_at": "2026-11-26T02:50:18.679Z",
     "status": "active"
   },
   {
@@ -3329,7 +3329,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 8
+        "stock": 6
       },
       {
         "sku": "EBGC2022BSL710",
@@ -3420,9 +3420,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/dusty-bsl710",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:33:44.232Z",
+    "synced_at": "2026-11-26T02:51:15.231Z",
     "status": "active"
   },
   {
@@ -3601,7 +3601,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 6
+        "stock": 5
       },
       {
         "sku": "EBGC2022CPC27203",
@@ -3649,7 +3649,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 73
+        "stock": 71
       },
       {
         "sku": "EVG3550CPC27203",
@@ -3818,9 +3818,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/rabbit-bear-cpc27203",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:35:03.602Z",
+    "synced_at": "2026-11-26T02:52:35.771Z",
     "status": "active"
   },
   {
@@ -4015,7 +4015,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 5
+        "stock": 4
       },
       {
         "sku": "EVG4565CPC27201",
@@ -4216,9 +4216,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/elf-cpc27201",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:36:18.739Z",
+    "synced_at": "2026-11-26T02:53:51.544Z",
     "status": "active"
   },
   {
@@ -4859,7 +4859,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 64
+        "stock": 65
       }
     ],
     "media": [
@@ -5012,9 +5012,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/citrus-eptmc27022",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:38:53.171Z",
+    "synced_at": "2026-11-26T02:55:06.921Z",
     "status": "active"
   },
   {
@@ -6192,9 +6192,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/rustic-eptc27033",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:42:48.053Z",
+    "synced_at": "2026-11-26T02:56:26.788Z",
     "status": "active"
   },
   {
@@ -7386,9 +7386,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/coastal-epc27036",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:46:43.542Z",
+    "synced_at": "2026-11-26T02:57:42.972Z",
     "status": "active"
   },
   {
@@ -8356,7 +8356,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 46
+        "stock": 44
       },
       {
         "sku": "EBGC1620EPM27034",
@@ -8642,9 +8642,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/ocean-epm27034",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:50:38.787Z",
+    "synced_at": "2026-11-26T02:58:59.452Z",
     "status": "active"
   },
   {
@@ -8711,7 +8711,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 25
+        "stock": 23
       },
       {
         "sku": "EBGCTBM2022ESTMC27011",
@@ -8727,7 +8727,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 12
+        "stock": 10
       },
       {
         "sku": "EBGC1620ESTMC27011",
@@ -8855,7 +8855,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 4
+        "stock": 2
       },
       {
         "sku": "EVG4565ESTMC27011",
@@ -8887,7 +8887,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 104
+        "stock": 98
       },
       {
         "sku": "EVG5070ESTMC27011",
@@ -9056,9 +9056,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/foliage-estmc27011",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:51:55.401Z",
+    "synced_at": "2026-11-26T03:00:15.903Z",
     "status": "active"
   },
   {
@@ -9109,7 +9109,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 54
+        "stock": 52
       },
       {
         "sku": "EBGCTBM1820ESTMC27003",
@@ -9125,7 +9125,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 89
+        "stock": 87
       },
       {
         "sku": "EBGCTBM2022ESTMC27003",
@@ -9141,7 +9141,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 32
+        "stock": 31
       },
       {
         "sku": "EBGC1620ESTMC27003",
@@ -9173,7 +9173,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 24
+        "stock": 22
       },
       {
         "sku": "EBBM1620ESTMC27003",
@@ -9454,9 +9454,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/broderie-estmc27003",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:53:10.878Z",
+    "synced_at": "2026-11-26T03:01:36.043Z",
     "status": "active"
   },
   {
@@ -9953,7 +9953,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 66
+        "stock": 63
       },
       {
         "sku": "EBGP1820ESTC27006",
@@ -10081,7 +10081,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 269
+        "stock": 265
       },
       {
         "sku": "EVG80100ESTC27006",
@@ -10097,7 +10097,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 187
+        "stock": 186
       },
       {
         "sku": "EVG5070ESTC27006",
@@ -10266,9 +10266,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/pine-estc27006",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:55:51.250Z",
+    "synced_at": "2026-11-26T03:02:51.867Z",
     "status": "active"
   },
   {
@@ -10673,9 +10673,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/mimosa-estc27005",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:57:10.358Z",
+    "synced_at": "2026-11-26T03:04:06.635Z",
     "status": "active"
   },
   {
@@ -11268,7 +11268,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 162
+        "stock": 160
       },
       {
         "sku": "EVG80100ESTC27001",
@@ -11284,7 +11284,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 104
+        "stock": 102
       },
       {
         "sku": "EVG5070ESTC27001",
@@ -11435,9 +11435,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/ginkgo-estc27001",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T06:59:40.831Z",
+    "synced_at": "2026-11-26T03:05:21.926Z",
     "status": "active"
   },
   {
@@ -11918,7 +11918,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 34
+        "stock": 62
       },
       {
         "sku": "EBGCTBM1820ESTJ27017",
@@ -11934,7 +11934,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 47
+        "stock": 87
       },
       {
         "sku": "EBGCTBM2022ESTJ27017",
@@ -11950,7 +11950,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 12
+        "stock": 32
       },
       {
         "sku": "EBGC1620ESTJ27017",
@@ -11982,7 +11982,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 25
+        "stock": 40
       },
       {
         "sku": "EBBM1620ESTJ27017",
@@ -12281,9 +12281,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/art-decor-estj27017",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:02:10.996Z",
+    "synced_at": "2026-11-26T03:06:37.793Z",
     "status": "active"
   },
   {
@@ -13619,7 +13619,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 388
+        "stock": 387
       },
       {
         "sku": "EVGT4545ESM26002",
@@ -13856,9 +13856,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/vuon-nang-esm26002",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:07:22.342Z",
+    "synced_at": "2026-11-26T03:07:58.041Z",
     "status": "active"
   },
   {
@@ -14143,9 +14143,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/mau-don-tim-estc26003",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:08:36.938Z",
+    "synced_at": "2026-11-26T03:09:18.250Z",
     "status": "active"
   },
   {
@@ -14560,9 +14560,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/dong-ca-hoa-co-esm26004",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:09:51.403Z",
+    "synced_at": "2026-11-26T03:10:37.182Z",
     "status": "active"
   },
   {
@@ -14612,7 +14612,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 16
+        "stock": 15
       },
       {
         "sku": "EBGC1820ESB26005",
@@ -14628,7 +14628,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 7
+        "stock": 6
       },
       {
         "sku": "EBGC2022ESB26005",
@@ -15022,9 +15022,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/mat-ho-xanh-esb26005",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:11:05.429Z",
+    "synced_at": "2026-11-26T03:11:50.501Z",
     "status": "active"
   },
   {
@@ -15318,9 +15318,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/canh-dong-vang-estmc26006",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:12:29.860Z",
+    "synced_at": "2026-11-26T03:13:03.978Z",
     "status": "active"
   },
   {
@@ -15639,9 +15639,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/cam-chuong-do-estc26007",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:13:44.451Z",
+    "synced_at": "2026-11-26T03:14:24.618Z",
     "status": "active"
   },
   {
@@ -15851,7 +15851,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 81
+        "stock": 77
       },
       {
         "sku": "EVG80100ESTJ26008",
@@ -15928,9 +15928,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/herringbone-estj26008",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:14:59.152Z",
+    "synced_at": "2026-11-26T03:15:40.592Z",
     "status": "active"
   },
   {
@@ -16028,7 +16028,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 6
+        "stock": 5
       },
       {
         "sku": "EGCT1620ESTJ26009",
@@ -16108,7 +16108,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 18
+        "stock": 16
       },
       {
         "sku": "EVGT4545ESTJ26009",
@@ -16201,9 +16201,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/hong-ti-muoi-estj26009",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:16:14.842Z",
+    "synced_at": "2026-11-26T03:17:00.690Z",
     "status": "active"
   },
   {
@@ -16503,9 +16503,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/gon-song-biec-esb26010",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:17:29.114Z",
+    "synced_at": "2026-11-26T03:18:21.699Z",
     "status": "active"
   },
   {
@@ -16651,7 +16651,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 8
+        "stock": 7
       },
       {
         "sku": "EGC1620EPTC26011",
@@ -16968,9 +16968,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/thu-thien-thanh-eptc26011",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:18:48.481Z",
+    "synced_at": "2026-11-26T03:19:41.704Z",
     "status": "active"
   },
   {
@@ -17392,9 +17392,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/vuon-co-dien-epc26012",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:20:02.665Z",
+    "synced_at": "2026-11-26T03:20:55.445Z",
     "status": "active"
   },
   {
@@ -18135,9 +18135,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/vuon-thu-tren-may-cpt26201",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:22:41.035Z",
+    "synced_at": "2026-11-26T03:22:09.557Z",
     "status": "active"
   },
   {
@@ -19238,7 +19238,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 1
+        "stock": 0
       },
       {
         "sku": "EGCT1620EPC26014",
@@ -19537,9 +19537,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/sach-hoa-epc26014",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:27:39.663Z",
+    "synced_at": "2026-11-26T03:23:24.815Z",
     "status": "active"
   },
   {
@@ -19794,9 +19794,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/monstera-ept26015",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:28:55.215Z",
+    "synced_at": "2026-11-26T03:24:39.020Z",
     "status": "active"
   },
   {
@@ -20099,9 +20099,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/la-thu-do-epc26016",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:30:10.369Z",
+    "synced_at": "2026-11-26T03:25:58.230Z",
     "status": "active"
   },
   {
@@ -20183,7 +20183,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 14
+        "stock": 13
       },
       {
         "sku": "EBGCT1620EPTC26017",
@@ -20199,7 +20199,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 6
+        "stock": 5
       },
       {
         "sku": "EBGCTBM1620EPTC26017",
@@ -20215,7 +20215,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 18
+        "stock": 17
       },
       {
         "sku": "EBBM1620EPTC26017",
@@ -20311,7 +20311,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 7
+        "stock": 6
       },
       {
         "sku": "EVG4565EPTC26017",
@@ -20388,9 +20388,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/chang-vang-eptc26017",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:31:27.124Z",
+    "synced_at": "2026-11-26T03:27:22.450Z",
     "status": "active"
   },
   {
@@ -20456,7 +20456,7 @@
         },
         "discount_percent": 0,
         "status": "active",
-        "stock": 9
+        "stock": 8
       },
       {
         "sku": "EBGC2022EPTC26018",
@@ -20665,6 +20665,22 @@
         "discount_percent": 0,
         "status": "active",
         "stock": 38
+      },
+      {
+        "sku": "EVG3550EPTC26018",
+        "size": "35x50",
+        "set_type": "Vỏ gối nằm",
+        "price": {
+          "amount": 219000,
+          "currency": "VND"
+        },
+        "compare_at_price": {
+          "amount": 219000,
+          "currency": "VND"
+        },
+        "discount_percent": 0,
+        "status": "active",
+        "stock": 2
       }
     ],
     "media": [
@@ -20691,9 +20707,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/muon-hoa-vang-eptc26018",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:32:42.175Z",
+    "synced_at": "2026-11-26T03:28:44.681Z",
     "status": "active"
   },
   {
@@ -21900,9 +21916,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/khoi-dau-lac-quan-ept25027",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:36:39.784Z",
+    "synced_at": "2026-11-26T03:30:05.545Z",
     "status": "active"
   },
   {
@@ -21966,7 +21982,7 @@
         },
         "discount_percent": 15,
         "status": "active",
-        "stock": 20
+        "stock": 19
       },
       {
         "sku": "EBGC2022EPM25026",
@@ -21982,7 +21998,7 @@
         },
         "discount_percent": 15,
         "status": "active",
-        "stock": 8
+        "stock": 7
       },
       {
         "sku": "EBGCT1620EPM25026",
@@ -22309,9 +22325,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/chum-la-tinh-te-epm25026",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:37:54.392Z",
+    "synced_at": "2026-11-26T03:31:19.604Z",
     "status": "active"
   },
   {
@@ -22488,22 +22504,6 @@
         "discount_percent": 15,
         "status": "active",
         "stock": 0
-      },
-      {
-        "sku": "EBGCT2022EPBC25025",
-        "size": "200x220",
-        "set_type": "Bộ ga chun chần",
-        "price": {
-          "amount": 2294150,
-          "currency": "VND"
-        },
-        "compare_at_price": {
-          "amount": 2699000,
-          "currency": "VND"
-        },
-        "discount_percent": 15,
-        "status": "active",
-        "stock": 1
       },
       {
         "sku": "EBGCTBM1820EPBC25025",
@@ -22718,9 +22718,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/canh-rung-hy-vong-epbc25025",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:39:13.886Z",
+    "synced_at": "2026-11-26T03:32:42.338Z",
     "status": "active"
   },
   {
@@ -23128,9 +23128,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/net-kien-dinh-est25024",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:40:28.874Z",
+    "synced_at": "2026-11-26T03:34:09.499Z",
     "status": "active"
   },
   {
@@ -28088,7 +28088,7 @@
         },
         "discount_percent": 15,
         "status": "active",
-        "stock": 6
+        "stock": 5
       },
       {
         "sku": "EVGT4545EPTC25037",
@@ -28271,9 +28271,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/ky-ha-xam-eptc25037",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T07:57:15.736Z",
+    "synced_at": "2026-11-26T03:35:26.207Z",
     "status": "active"
   },
   {
@@ -39251,9 +39251,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/hoa-moc-lan-esb23022",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T08:35:03.682Z",
+    "synced_at": "2026-11-26T03:36:44.847Z",
     "status": "active"
   },
   {
@@ -43559,9 +43559,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/sac-ha-esc23002",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T08:51:25.817Z",
+    "synced_at": "2026-11-26T03:38:14.015Z",
     "status": "active"
   },
   {
@@ -44245,9 +44245,9 @@
     "source": {
       "site": "everon.com",
       "url": "https://everon.com/san-pham/hoa-hen-uoc-epc23045",
-      "updated_at": "2026-11-25"
+      "updated_at": "2026-11-26"
     },
-    "synced_at": "2026-11-25T08:54:09.395Z",
+    "synced_at": "2026-11-26T03:39:28.999Z",
     "status": "active"
   },
   {
