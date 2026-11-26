@@ -635,6 +635,17 @@
       colSelect.value = colParam;
     }
 
+    /* Tìm kiếm từ ô tìm kiếm ở header (?q=): điền sẵn vào ô lọc của
+       trang danh mục rồi áp bộ lọc (cùng cách lọc không dấu theo
+       tên/mã như khi gõ tay). Ô tìm kiếm ở header cũng hiện lại từ
+       khóa để khách thấy mình vừa tìm gì. */
+    var qParam = params.get("q") || "";
+    if (qParam) {
+      qInput.value = qParam;
+      var headerQ = document.querySelector(".header-search input");
+      if (headerQ) headerQ.value = qParam;
+    }
+
     function applyFilters() {
       var q = norm(qInput.value.trim());
       var col = colSelect.value;
@@ -912,9 +923,58 @@
     });
   }
 
+  /* ---------- nút liên hệ nổi (1 nút tròn trắng góc dưới-phải) ---------- */
+  /* Mẫu trang gốc đã xác minh: 1 nút tròn trắng ~60px góc dưới-phải;
+     bấm mở chồng dọc 4 lựa chọn phía trên (2 Zalo + 2 số gọi, đúng
+     thứ tự này), bấm nút X thì đóng. Chèn bằng JS một lần nên hiện cả
+     trên các trang chính sách (các trang này đều load app.js +
+     style.css). Không thêm kênh chat/mạng xã hội khác. Các lựa chọn là pill
+     kèm số (không phải nút tròn chỉ có icon) để phân biệt được 2 số
+     Zalo với 2 số gọi. */
+  var CONTACT_FAB_LINKS = [
+    { href: "https://zalo.me/0911825151", label: "Nhắn Zalo 0911825151", kind: "zalo", short: "Zalo" },
+    { href: "https://zalo.me/0363089565", label: "Nhắn Zalo 0363 089 565", kind: "zalo", short: "Zalo" },
+    { href: "tel:0911825151", label: "Gọi 0911 825 151", kind: "call", short: "Gọi" },
+    { href: "tel:0363089565", label: "Gọi 0363 089 565", kind: "call", short: "Gọi" }
+  ];
+  var FAB_CHAT_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2c-1.6 0-3.1-.4-4.4-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.6-6.1c-.3-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8 1-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4 0-.5.2-.8l.4-.5c.1-.2.1-.4 0-.5l-.8-1.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.3-.9.9-.9 2.2s.9 2.5 1.1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.6.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.2-.2-.5-.3z"/></svg>';
+  function initContactFab() {
+    if (!document || !document.createElement || !document.body || !document.body.appendChild) return;
+    if (document.getElementById("contact-fab")) return;
+    var fab = document.createElement("div");
+    fab.className = "contact-fab";
+    fab.setAttribute("id", "contact-fab");
+    var opts = CONTACT_FAB_LINKS.map(function (l) {
+      var target = l.href.indexOf("https://") === 0 ? ' target="_blank" rel="noopener"' : "";
+      return '<a class="contact-fab-opt" href="' + esc(l.href) + '"' + target + '><span class="fab-ico ' + l.kind + '">' + esc(l.short) + "</span>" + esc(l.label) + "</a>";
+    }).join("");
+    fab.innerHTML = '<div class="contact-fab-opts">' + opts + "</div>" +
+      '<button type="button" class="contact-fab-btn" aria-label="Liên hệ Điệp Xuân" aria-expanded="false"></button>';
+    document.body.appendChild(fab);
+    var btn = fab.querySelector(".contact-fab-btn");
+    function setFab(open) {
+      if (fab.classList) {
+        if (open) fab.classList.add("open"); else fab.classList.remove("open");
+      }
+      if (btn) {
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.setAttribute("aria-label", open ? "Đóng liên hệ" : "Liên hệ Điệp Xuân");
+        btn.innerHTML = open ? "✕" : FAB_CHAT_ICON;
+      }
+    }
+    setFab(false);
+    if (btn && btn.addEventListener) btn.addEventListener("click", function () {
+      setFab(!fab.classList.contains("open"));
+    });
+    if (document.addEventListener) document.addEventListener("keydown", function (e) {
+      if (e && e.key === "Escape") setFab(false);
+    });
+  }
+
   /* ---------- khởi động ---------- */
   function init() {
     var page = document.body ? document.body.getAttribute("data-page") : null;
+    initContactFab();
     loadData()
       .then(function (data) {
         bindSite(data.site);
