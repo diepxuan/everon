@@ -742,6 +742,8 @@ main { padding: 8px 0 40px; }
 @media (min-width: 720px) {
   .footer-grid { grid-template-columns: 2fr 1fr; }
 }
+.footer-bottom { margin-top: 20px; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, .2); font-size: 13px; color: #9db0c2; }
+.footer-bottom p { margin: 3px 0; }
 
 /* ---------- Trang chính sách ---------- */
 .policy { max-width: 780px; }
