@@ -258,7 +258,11 @@
     document.querySelectorAll("[data-hotline]").forEach(function (el) {
       var phone = (site.zalo || [])[0] ? site.zalo[0].phone : "";
       el.setAttribute("href", "tel:" + phone);
-      el.textContent = phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3");
+      /* Nút trong drawer giữ nhãn "Gọi showroom" (data-keep-label);
+         các nút khác hiện số điện thoại như cũ. */
+      if (el.getAttribute("data-keep-label") === null) {
+        el.textContent = phone.replace(/(\d{4})(\d{3})(\d{3})/, "$1 $2 $3");
+      }
     });
   }
 
@@ -285,8 +289,11 @@
   function soonItemHTML(name) {
     return '<li><span class="menu-soon">' + esc(name) + ' <span class="tag-soon">Sắp có</span></span></li>';
   }
-  function menuGroupHTML(title, itemsHTML) {
-    return '<div class="menu-group"><h3>' + esc(title) + "</h3><ul>" + itemsHTML + "</ul></div>";
+  /* Tiêu đề nhóm là nút bấm: trên mobile (drawer) bấm để mở/đóng các
+     mục con; trên desktop các mục con luôn hiện nên bấm không đổi gì
+     nhìn thấy. Số lượng trong ngoặc chỉ hiện trên mobile (CSS). */
+  function menuGroupHTML(title, itemsHTML, count) {
+    return '<div class="menu-group"><button type="button" class="menu-group-toggle" aria-expanded="false">' + esc(title) + ' <span class="menu-count">(' + count + ')</span> <span class="caret" aria-hidden="true">▾</span></button><ul class="menu-group-items">' + itemsHTML + "</ul></div>";
   }
   /* Dropdown "Sản phẩm": nhóm Chăn ga gối lấy từ data/categories.json
      (7 mục), 3 nhóm còn lại lấy từ MENU_SOON ở trên. */
@@ -298,9 +305,9 @@
       return soonItemHTML(c.name);
     }).join("");
     var soon = MENU_SOON.map(function (g) {
-      return menuGroupHTML(g.group, g.items.map(soonItemHTML).join(""));
+      return menuGroupHTML(g.group, g.items.map(soonItemHTML).join(""), g.items.length);
     }).join("");
-    return '<div class="menu-col">' + menuGroupHTML("Chăn ga gối", chanGaGoi) + "</div>" +
+    return '<div class="menu-col">' + menuGroupHTML("Chăn ga gối", chanGaGoi, (data.categories.categories || []).length) + "</div>" +
       '<div class="menu-col">' + soon + "</div>";
   }
   function closeMenus() {
@@ -310,6 +317,33 @@
       if (link.classList) link.classList.remove("open");
       link.setAttribute("aria-expanded", "false");
     });
+    /* Đóng cả các nhóm con trong accordion (mở lại thì bắt đầu gọn). */
+    var panel = document.getElementById("menu-san-pham");
+    var groups = panel && panel.querySelectorAll ? panel.querySelectorAll(".menu-group.open") : [];
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].classList) groups[i].classList.remove("open");
+      var t = groups[i].querySelector ? groups[i].querySelector(".menu-group-toggle") : null;
+      if (t) t.setAttribute("aria-expanded", "false");
+    }
+  }
+  /* Accordion 2 tầng trong drawer: bấm tiêu đề nhóm thì mở nhóm đó và
+     đóng các nhóm khác (một lúc chỉ 1 nhóm mở). */
+  function toggleMenuGroup(btn) {
+    if (!btn || !btn.closest) return;
+    var group = btn.closest(".menu-group");
+    if (!group || !group.classList) return;
+    var wasOpen = group.classList.contains("open");
+    var panel = document.getElementById("menu-san-pham");
+    var groups = panel && panel.querySelectorAll ? panel.querySelectorAll(".menu-group") : [];
+    for (var i = 0; i < groups.length; i++) {
+      if (groups[i].classList) groups[i].classList.remove("open");
+      var t = groups[i].querySelector ? groups[i].querySelector(".menu-group-toggle") : null;
+      if (t) t.setAttribute("aria-expanded", "false");
+    }
+    if (!wasOpen) {
+      group.classList.add("open");
+      btn.setAttribute("aria-expanded", "true");
+    }
   }
   function toggleMenu(link, e) {
     if (CAN_HOVER) return true;
@@ -324,6 +358,178 @@
     }
     return true;
   }
+  /* ---------- drawer mobile (≤720px): trượt từ phải + vuốt ---------- */
+  var EDGE_ZONE = 30; /* px tính từ mép phải: vùng bắt vuốt mở drawer */
+  var SWIPE_MIN = 24; /* quãng tối thiểu để tính là một cái vuốt */
+  var drag = null;
+  function isMobileNav() {
+    try {
+      return !!window.matchMedia && window.matchMedia("(max-width: 720px)").matches;
+    } catch (e) { return false; }
+  }
+  function drawerIsOpen() {
+    var nav = document.getElementById("main-nav");
+    return !!(nav && nav.classList && nav.classList.contains("open"));
+  }
+  function lockBodyScroll(lock) {
+    if (document.body && document.body.style) {
+      document.body.style.overflow = lock ? "hidden" : "";
+    }
+  }
+  function setToggleIcon(open) {
+    var toggle = document.getElementById("nav-toggle");
+    if (!toggle) return;
+    toggle.textContent = open ? "✕" : "☰";
+    toggle.setAttribute("aria-label", open ? "Đóng menu" : "Mở menu");
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+  function openDrawer() {
+    var nav = document.getElementById("main-nav");
+    var backdrop = document.getElementById("nav-backdrop");
+    if (!nav || !nav.classList) return;
+    if (nav.style) nav.style.transform = "";
+    if (nav.style) nav.style.visibility = "";
+    closeMenus();
+    nav.classList.add("open");
+    if (backdrop && backdrop.style) { backdrop.style.opacity = ""; backdrop.style.transition = ""; }
+    if (backdrop && backdrop.classList) backdrop.classList.add("open");
+    lockBodyScroll(true);
+    setToggleIcon(true);
+  }
+  function closeDrawer() {
+    var nav = document.getElementById("main-nav");
+    var backdrop = document.getElementById("nav-backdrop");
+    if (nav && nav.classList) nav.classList.remove("open");
+    if (backdrop && backdrop.style) { backdrop.style.opacity = ""; backdrop.style.transition = ""; }
+    if (backdrop && backdrop.classList) backdrop.classList.remove("open");
+    if (nav && nav.style) nav.style.transform = "";
+    if (nav && nav.style) nav.style.visibility = "";
+    lockBodyScroll(false);
+    setToggleIcon(false);
+    closeMenus();
+  }
+  function drawerWidth() {
+    var nav = document.getElementById("main-nav");
+    if (nav && nav.getBoundingClientRect) return nav.getBoundingClientRect().width;
+    return 320;
+  }
+  function touchPoint(e) {
+    var t = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+    return t ? { x: t.clientX, y: t.clientY } : null;
+  }
+  function dragStart(x, y, mode) {
+    var nav = document.getElementById("main-nav");
+    if (nav && nav.classList) nav.classList.add("dragging");
+    drag = { mode: mode, startX: x, startY: y, x: x, y: y, lastX: x, lastT: Date.now(), vx: 0, decided: false };
+  }
+  function dragMove(x, y, e) {
+    if (!drag) return;
+    var dx = x - drag.startX;
+    var dy = y - drag.startY;
+    var now = Date.now();
+    drag.vx = (x - drag.lastX) / Math.max(1, now - drag.lastT);
+    drag.lastX = x;
+    drag.lastT = now;
+    drag.x = x;
+    drag.y = y;
+    if (!drag.decided) {
+      if (Math.abs(dx) < SWIPE_MIN && Math.abs(dy) < SWIPE_MIN) return;
+      if (Math.abs(dx) <= Math.abs(dy)) { dragCancel(); return; }
+      drag.decided = true;
+    }
+    if (e && e.preventDefault) e.preventDefault();
+    var w = drawerWidth();
+    var px;
+    if (drag.mode === "open") {
+      px = Math.max(0, Math.min(w, w - (drag.startX - x)));
+    } else {
+      px = Math.max(0, Math.min(w, x - drag.startX));
+    }
+    var nav = document.getElementById("main-nav");
+    if (nav && nav.style) nav.style.transform = "translateX(" + px + "px)";
+    /* Kéo mở: drawer đang visibility:hidden nên phải hiện ra để bám tay;
+       backdrop mờ dần theo tiến độ kéo (cả 2 chiều). */
+    if (nav && nav.style && drag.mode === "open") nav.style.visibility = "visible";
+    var backdrop = document.getElementById("nav-backdrop");
+    if (backdrop && backdrop.style) { backdrop.style.transition = "none"; backdrop.style.opacity = String(1 - px / w); }
+  }
+  function dragCancel() {
+    if (!drag) return;
+    drag = null;
+    var nav = document.getElementById("main-nav");
+    if (nav && nav.classList) nav.classList.remove("dragging");
+    if (nav && nav.style) nav.style.transform = "";
+    if (nav && nav.style) nav.style.visibility = "";
+    var backdrop = document.getElementById("nav-backdrop");
+    if (backdrop && backdrop.style) { backdrop.style.opacity = ""; backdrop.style.transition = ""; }
+  }
+  function dragEnd() {
+    if (!drag) return;
+    var d = drag;
+    drag = null;
+    var nav = document.getElementById("main-nav");
+    if (nav && nav.classList) nav.classList.remove("dragging");
+    if (!d.decided) return;
+    var w = drawerWidth();
+    var dx = d.x - d.startX;
+    var open;
+    if (d.mode === "open") {
+      open = (-dx > w * 0.25) || (d.vx < -0.3);
+    } else {
+      open = !((dx > w * 0.25) || (d.vx > 0.3));
+    }
+    if (nav && nav.style) nav.style.transform = "";
+    if (open) openDrawer(); else closeDrawer();
+  }
+  /* Vuốt mở/đóng drawer (touch, không thư viện). Chỉ can thiệp vuốt
+     NGANG: mở khi bắt đầu trong ~30px mép phải và vuốt sang trái;
+     đóng khi drawer đang mở và vuốt sang phải trên drawer/backdrop.
+     Vuốt dọc không bị chặn (chưa chắc ngang thì không preventDefault). */
+  function bindSwipe() {
+    var nav = document.getElementById("main-nav");
+    var backdrop = document.getElementById("nav-backdrop");
+    if (document.addEventListener) {
+      document.addEventListener("touchstart", function (e) {
+        if (!isMobileNav() || drawerIsOpen() || drag) return;
+        var p = touchPoint(e);
+        if (!p) return;
+        var w = (typeof window !== "undefined" && window.innerWidth) || 360;
+        if (p.x < w - EDGE_ZONE) return;
+        dragStart(p.x, p.y, "open");
+      }, { passive: true });
+      document.addEventListener("touchmove", function (e) {
+        if (!drag || drag.mode !== "open") return;
+        var p = touchPoint(e);
+        if (p) dragMove(p.x, p.y, e);
+      }, { passive: false });
+      document.addEventListener("touchend", function () {
+        if (drag && drag.mode === "open") dragEnd();
+      });
+      document.addEventListener("touchcancel", function () {
+        if (drag && drag.mode === "open") dragCancel();
+      });
+    }
+    [nav, backdrop].forEach(function (el) {
+      if (!el || !el.addEventListener) return;
+      el.addEventListener("touchstart", function (e) {
+        if (!isMobileNav() || !drawerIsOpen() || drag) return;
+        var p = touchPoint(e);
+        if (p) dragStart(p.x, p.y, "close");
+      }, { passive: true });
+      el.addEventListener("touchmove", function (e) {
+        if (!drag || drag.mode !== "close") return;
+        var p = touchPoint(e);
+        if (p) dragMove(p.x, p.y, e);
+      }, { passive: false });
+      el.addEventListener("touchend", function () {
+        if (drag && drag.mode === "close") dragEnd();
+      });
+      el.addEventListener("touchcancel", function () {
+        if (drag && drag.mode === "close") dragCancel();
+      });
+    });
+  }
+
   function initMenu(data) {
     var page = document.body ? document.body.getAttribute("data-page") : null;
     /* Mục đang xem: trang chủ giữ class active tĩnh trong HTML; trang
@@ -338,30 +544,35 @@
       var link = document.getElementById(id);
       if (link) link.addEventListener("click", function (e) { toggleMenu(link, e); });
     });
-    /* Nút hamburger (mobile ≤720px): mở / đóng panel dọc. */
+    /* Accordion nhóm con trong dropdown "Sản phẩm" (ủy quyền trên panel). */
+    if (panel) panel.addEventListener("click", function (e) {
+      var t = e && e.target && e.target.closest ? e.target.closest(".menu-group-toggle") : null;
+      if (t) toggleMenuGroup(t);
+    });
+    /* Nút hamburger (mobile ≤720px): mở / đóng drawer. Nút ✕ trong
+       drawer và bấm backdrop cũng đóng. */
     var toggle = document.getElementById("nav-toggle");
-    var nav = document.getElementById("main-nav");
-    if (toggle && nav && nav.classList) {
+    if (toggle) {
       toggle.addEventListener("click", function () {
-        if (nav.classList.contains("open")) {
-          nav.classList.remove("open");
-          toggle.setAttribute("aria-expanded", "false");
-        } else {
-          nav.classList.add("open");
-          toggle.setAttribute("aria-expanded", "true");
-        }
+        if (drawerIsOpen()) closeDrawer(); else openDrawer();
       });
     }
-    /* Esc hoặc bấm ra ngoài thì đóng dropdown. */
+    var closeBtn = document.getElementById("nav-close");
+    if (closeBtn) closeBtn.addEventListener("click", function () { closeDrawer(); });
+    var backdrop = document.getElementById("nav-backdrop");
+    if (backdrop) backdrop.addEventListener("click", function () { closeDrawer(); });
+    /* Esc hoặc bấm ra ngoài thì đóng dropdown / drawer. */
     if (document.addEventListener) {
       document.addEventListener("keydown", function (e) {
-        if (e && e.key === "Escape") closeMenus();
+        if (e && e.key === "Escape") { closeDrawer(); closeMenus(); }
       });
       document.addEventListener("click", function (e) {
         var t = e && e.target && e.target.closest ? e.target.closest("[data-menu]") : null;
         if (!t) closeMenus();
       });
     }
+    /* Vuốt mở/đóng drawer (touch). */
+    bindSwipe();
   }
 
   /* ---------- trang chủ ---------- */
