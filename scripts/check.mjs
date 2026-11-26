@@ -84,6 +84,7 @@ check("menu mobile: chỉ duy nhất 1 chỗ .nav-item display:flex (không lọ
 const indexSrc = readFileSync(join(root, "index.html"), "utf8");
 check("menu: trang chủ không còn mục Danh mục sản phẩm", !indexSrc.includes("cat-title") && !indexSrc.includes("category-grid"));
 check("header gọn: hero trang chủ không còn nút Zalo rời [data-zalo-buttons]", !(/<section class="hero">[\s\S]*?<\/section>/.exec(indexSrc) || [""])[0].includes("data-zalo-buttons"));
+check("xóa nút xem SP: hero trang chủ không còn nút \"Xem Bộ chăn ga\"", !(/<section class="hero">[\s\S]*?<\/section>/.exec(indexSrc) || [""])[0].includes("Xem Bộ chăn ga"));
 const catSrc = readFileSync(join(root, "bo-chan-ga/index.html"), "utf8");
 check("menu: trang danh mục không còn class active tĩnh Bộ chăn ga", !catSrc.includes('class="active">Bộ chăn ga'));
 const css = readFileSync(join(root, "assets/css/style.css"), "utf8");
