@@ -693,6 +693,40 @@ main { padding: 8px 0 40px; }
   .dropdown .tag-soon { background: transparent; color: #7e93a8; font-size: 12px; font-weight: 600; padding: 0; }
 }
 
+/* ---------- Header 3 dòng ở màn medium (tablet 721–1023px) ----------
+   Nguyên nhân nhảy (đo thật bằng Chromium, xem README gói header-3-dong):
+   .site-header .wrap là 1 hàng flex wrap; 4 món (logo ~319px + tìm kiếm
+   luôn 340px + nav ~206px + Gọi ~130px + khe 16px) cần 1043px nội dung
+   mới vừa 1 hàng, tức viewport ≥1075px. Từ 721–1074px hàng bị gãy 2 tầng
+   và nav/Gọi nhảy qua lại giữa 2 hàng: 721–~929px nav+Gọi ở hàng 2 (đẩy
+   phải vì margin-left:auto của nav, đo thật 384px ở 768px); ~929–1074px
+   nav nhảy lên hàng 1, nút Gọi ở lại hàng 2 một mình (đo thật ở 1024px).
+   Ở dải này xếp cố định 3 dòng: dòng 1 logo + Gọi, dòng 2 tìm kiếm
+   full-width, dòng 3 top nav 1 hàng ngang, không dùng drawer (nút ☰ ẩn;
+   JS drawer chỉ chạy ≤720px nên không cần đổi JS). */
+@media (min-width: 721px) and (max-width: 1023px) {
+  .site-header .wrap { gap: 10px 16px; }
+  /* Dòng 1: logo (giữ tagline) + nút Gọi showroom bên phải. */
+  .brand { order: 1; flex: 1 1 auto; min-width: 0; }
+  .header-call { order: 2; display: block; flex: none; margin-left: auto; }
+  /* Dòng 2: ô tìm kiếm full-width. */
+  .header-search { flex: 1 1 100%; order: 3; max-width: none; min-width: 0; }
+  /* Dòng 3: top nav 1 hàng ngang, không drawer. */
+  .main-nav { order: 4; flex: 1 1 100%; margin-left: 0; }
+  .nav-toggle { display: none; }
+  /* Dropdown Sản phẩm neo trái hàng nav: mặc định neo giữa mục cha sẽ
+     lòi ra ngoài viewport khi mục cha sát mép trái ở màn hẹp. */
+  .main-nav .dropdown-products { left: 0; transform: none; }
+}
+
+/* Màn vừa (1024–1119px): giữ 1 hàng như desktop nhưng ẩn tagline để
+   logo + tìm kiếm + nav + Gọi vừa thật 1 hàng — không ẩn thì nút Gọi
+   rớt xuống hàng 2 một mình (đo thật ở 1024px). Từ 1120px tagline hiện
+   lại (đủ chỗ 1043px nội dung, đo thật margin nav 44.7px ở 1120px). */
+@media (min-width: 1024px) and (max-width: 1119px) {
+  .brand > span:last-child { display: none; }
+}
+
 /* ---------- Mobile nhỏ ---------- */
 @media (max-width: 480px) {
   .hero { padding: 26px 0 30px; }
