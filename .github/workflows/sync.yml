@@ -1,32 +1,43 @@
 # .github/workflows/sync.yml — Đồng bộ catalog + ảnh tự lưu cho everon.site
-# Theo phương án everon.site mục 5 + chiến lược ảnh.
+# Theo phương án everon.site mục 5 + chiến lược ảnh. CẬP NHẬT 26/11/2026:
+# site giờ có TOÀN BỘ catalog (12 danh mục, 437 SP) thay vì chỉ Bộ chăn ga.
 #
 # Luồng chạy (thứ tự quan trọng):
-#   1. scrape-full.mjs — cập nhật dữ liệu từ everon.com (sitemap + variation).
+#   1. scrape-full.mjs — cập nhật dữ liệu từ everon.com (sitemap + variation),
+#      chạy RIÊNG TỪNG DANH MỤC (--category <id>), 12 danh mục:
+#        dem, dem-k-bedding, k-bedding, tre-em, bo-chan-ga-artemis,
+#        bo-chan-ga, ga, vo-goi, chan-va-vo-chan, ruot, goi, phu-kien.
 #      Tăng dần THẬT SỰ theo sitemap lastmod (so với lastmod đã lưu trong
 #      data/sync-state.json): chỉ cào lại URL mới/đổi, giữ lại phần còn lại
-#      từ data/products.json. Chủ nhật / full_scan thì --full (cào tất cả).
-#   2. export-site-data.mjs — xuất mảng trần data/products.json + sync-state.json.
-#   3. images.mjs — tải ảnh MỚI/THAY ĐỔI về assets/img/products/<sku>/*.webp,
-#      song song với cập nhật dữ liệu (chạy sau scrape vì cần danh sách
-#      source_url mới nhất). Ảnh không đổi (đã có trong manifest) thì bỏ qua.
+#      từ data/products.json.
+#   2. export-site-data.mjs — gộp 12 wrapper thành data/products.json
+#      (UNION biến thể theo (set_type, size) khi cùng SKU xuất hiện ở
+#      nhiều danh mục; danh mục nào không cào lần này thì giữ nguyên từ
+#      products.json cũ) + cập nhật sync-state.json.
+#   3. images.mjs — tải ảnh MỚI/THAY ĐỔI về assets/img/products/<sku>/*.webp.
 #   4. validate.mjs (+ safety gate) — chặn nếu mất >10% catalog hoặc giá = 0.
 #   5. diff.mjs — tóm tắt thay đổi để đưa vào mô tả PR.
-#   6. Dọn file trung gian — xóa data/products-bo-chan-ga.full.json(.jsonl),
-#      data/state.json, data/run-stats.json, data/discovery.json,
-#      data/sync-diff.json TRƯỚC khi tạo PR, để PR sau chỉ gồm dữ liệu
-#      thật (products.json, sync-state.json, image-manifest.json) + ảnh.
-#      File trung gian chỉ dùng trong lần chạy, không commit nữa.
+#   6. Dọn file trung gian — xóa data/products-<id>.full.json(.jsonl),
+#      data/state-<id>.json, data/run-stats-<id>.json,
+#      data/discovery-<id>.json, data/sync-diff.json TRƯỚC khi tạo PR,
+#      để PR sau chỉ gồm dữ liệu thật (products.json, sync-state.json,
+#      image-manifest.json) + ảnh.
 #   7. peter-evans/create-pull-request — mở PR để DUYỆT THỦ CÔNG, KHÔNG tự merge.
 #      Action chỉ mở PR khi có thay đổi thật (không có thay đổi thì không làm gì).
 #
-# Lịch: hằng ngày 03:00 giờ Việt Nam (20:00 UTC). Chủ nhật (giờ Việt Nam)
-# quét TOÀN BỘ (bỏ qua lastmod); các ngày khác quét tăng dần theo lastmod.
+# Lịch: hằng ngày 03:00 giờ Việt Nam (20:00 UTC).
+#   - Mỗi ngày: tăng dần cho cả 12 danh mục + QUÉT TOÀN BỘ 2 danh mục
+#     XOAY VÒNG theo ngày trong năm (6 cặp, mỗi danh mục được quét toàn bộ
+#     1 lần / 6 ngày). Quét toàn bộ cả 12 danh mục trong 1 lần chạy sẽ mất
+#     ~6–7 giờ, VƯỢT timeout tối đa của GitHub Actions (360 phút) nên
+#     KHÔNG quét toàn bộ hằng ngày.
+#   - Chạy tay (workflow_dispatch, tick full_scan): quét toàn bộ cả 12 danh
+#     mục. Timeout job 360 phút (tối đa cho phép); nếu vẫn quá giờ, chạy lại
+#     với full_scan lần nữa — scraper có checkpoint (--resume) và export giữ
+#     nguyên danh mục chưa cào xong, nên lần chạy sau tiếp tục từ chỗ dở.
+#   - Chạy tay với input `categories` (vd "vo-goi,chan-va-vo-chan"): chỉ
+#     sync các danh mục đó (tăng dần, trừ khi tick full_scan).
 # Chạy tay: Actions > Sync catalog > Run workflow, tick full_scan nếu muốn quét toàn bộ.
-#
-# Lần chạy đầu tiên sau PR dọn dẹp này sẽ cào lại toàn bộ 189 sản phẩm
-# (vì lastmod đang lưu trên main đều null do regex sitemap cũ sai);
-# từ lần sau trở đi mới tăng dần thật sự.
 name: Sync catalog from everon.com
 
 on:
@@ -38,6 +49,10 @@ on:
         description: "Quét toàn bộ (bỏ qua checkpoint, chạy discovery lại từ đầu)"
         type: boolean
         default: false
+      categories:
+        description: "Chỉ sync các danh mục này (vd: vo-goi,chan-va-vo-chan). Để trống = cả 12 danh mục."
+        type: string
+        default: ""
 
 concurrency:
   group: catalog-sync
@@ -50,7 +65,7 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 240 # chạy full lần đầu ~100 phút (tuần tự, 1,5s/request)
+    timeout-minutes: 360 # quét toàn bộ tay ~6-7h có thể quá giờ; chạy hằng ngày (xoay vòng) chỉ ~1-2h
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -74,27 +89,47 @@ jobs:
             echo "[]" > /tmp/products-prev.json
           fi
 
-      - name: Xác định quét toàn bộ hay tăng dần
+      - name: Xác định danh mục + quét toàn bộ hay tăng dần
         id: mode
         run: |
-          # Chủ nhật tính theo giờ Việt Nam: 03:00 +07 Chủ nhật = 20:00 UTC Thứ bảy,
-          # nên phải lấy thứ theo múi giờ Asia/Ho_Chi_Minh, không dùng giờ UTC.
-          DOW_VN=$(TZ=Asia/Ho_Chi_Minh date +%u)
-          if [ "$DOW_VN" = "7" ] || [ "${{ inputs.full_scan }}" = "true" ]; then
-            echo "full=true" >> "$GITHUB_OUTPUT"
-            echo "Quét TOÀN BỘ (Chủ nhật / chạy tay yêu cầu full_scan)."
+          # 12 danh mục, thứ tự = thứ tự export (tre-em/artemis trước bo-chan-ga
+          # để SP chuyển danh mục thắng khi gộp; bo-chan-ga trước vo-goi/chan
+          # để trang bộ thắng khi UNION biến thể).
+          ALL_CATS="dem dem-k-bedding k-bedding tre-em bo-chan-ga-artemis bo-chan-ga ga vo-goi chan-va-vo-chan ruot goi phu-kien"
+          # 6 cặp xoay vòng (mỗi danh mục quét toàn bộ 1 lần / 6 ngày).
+          PAIRS="dem,dem-k-bedding k-bedding,tre-em bo-chan-ga-artemis,bo-chan-ga ga,vo-goi chan-va-vo-chan,ruot goi,phu-kien"
+          if [ "${{ inputs.full_scan }}" = "true" ]; then
+            CATS="$ALL_CATS"
+            FULL_CATS="$ALL_CATS"
+            echo "Quét TOÀN BỘ cả 12 danh mục (chạy tay yêu cầu full_scan)."
+          elif [ -n "${{ inputs.categories }}" ]; then
+            CATS=$(echo "${{ inputs.categories }}" | tr ',' ' ')
+            FULL_CATS=""
+            echo "Chỉ sync các danh mục: $CATS (tăng dần)."
           else
-            echo "full=false" >> "$GITHUB_OUTPUT"
-            echo "Quét tăng dần (chỉ URL thay đổi theo lastmod)."
+            # Chạy lịch hằng ngày: tăng dần cả 12 + quét toàn bộ 2 danh mục xoay vòng.
+            DOY_VN=$(TZ=Asia/Ho_Chi_Minh date +%j)
+            IDX=$((10#$DOY_VN % 6))
+            CATS="$ALL_CATS"
+            FULL_CATS=$(echo "$PAIRS" | cut -d' ' -f$((IDX + 1)) | tr ',' ' ')
+            echo "Quét tăng dần cả 12 danh mục + quét toàn bộ xoay vòng: $FULL_CATS (ngày $DOY_VN, cặp $((IDX + 1))/6)."
           fi
+          echo "cats=$CATS" >> "$GITHUB_OUTPUT"
+          echo "full_cats=$FULL_CATS" >> "$GITHUB_OUTPUT"
 
-      - name: Sync catalog (Bộ chăn ga)
+      - name: Sync catalog (12 danh mục)
         run: |
-          if [ "${{ steps.mode.outputs.full }}" = "true" ]; then
-            node scripts/sync/scrape-full.mjs --full
-          else
-            node scripts/sync/scrape-full.mjs
-          fi
+          set -u
+          FULL_CATS=" ${{ steps.mode.outputs.full_cats }} "
+          for CAT in ${{ steps.mode.outputs.cats }}; do
+            if [[ "$FULL_CATS" == *" $CAT "* ]]; then
+              echo "=== $CAT: quét toàn bộ (--full) ==="
+              node scripts/sync/scrape-full.mjs --category "$CAT" --full || node scripts/sync/scrape-full.mjs --category "$CAT" --full --resume
+            else
+              echo "=== $CAT: tăng dần theo lastmod ==="
+              node scripts/sync/scrape-full.mjs --category "$CAT" || node scripts/sync/scrape-full.mjs --category "$CAT" --resume
+            fi
+          done
 
       - name: Xuất dữ liệu site + cập nhật sync-state
         run: node scripts/sync/export-site-data.mjs
@@ -145,21 +180,15 @@ jobs:
 
       - name: Dọn file trung gian (chỉ commit dữ liệu + ảnh)
         run: |
-          # File trung gian chỉ dùng trong lần chạy, KHÔNG commit nữa:
-          #  - products-bo-chan-ga.full.json(.jsonl): bản wrapper + checkpoint dòng
-          #    (export-site-data đã đọc xong ở bước trước)
-          #  - state.json: checkpoint của scraper (bản sao y hệt products trong
-          #    full.json; lần chạy sau không dùng vì đã tăng dần theo lastmod)
-          #  - run-stats.json: báo cáo lần chạy (không ai đọc lại)
-          #  - discovery.json: kết quả discovery lần này (export đã gộp
-          #    lastmod vào sync-state.json; lần sau discovery lại từ đầu)
-          #  - sync-diff.json: đã dùng xong để soạn mô tả PR ở bước trên
-          # Lệnh chạy SAU bước soạn mô tả PR và TRƯỚC bước tạo PR, nên
-          # create-pull-request sẽ commit đúng phần còn lại: products.json,
-          # sync-state.json, image-manifest.json và ảnh. Lần chạy đầu tiên
-          # sau PR này, lệnh còn xóa luôn 6 file trên khỏi main (đang commit
-          # sẵn từ PR #8) vì chúng là file đã theo dõi (tracked) bị xóa.
-          rm -f data/products-bo-chan-ga.full.json data/products-bo-chan-ga.full.jsonl data/state.json data/run-stats.json data/discovery.json data/sync-diff.json
+          # File trung gian chỉ dùng trong lần chạy, KHÔNG commit nữa.
+          # Mỗi danh mục có 5 file: products-<id>.full.json(.jsonl),
+          # state-<id>.json, run-stats-<id>.json, discovery-<id>.json.
+          # (export-site-data đã đọc xong wrapper ở bước trước; lần chạy sau
+          # tăng dần theo lastmod trong sync-state.json, không dùng state.json.)
+          for CAT in dem dem-k-bedding k-bedding tre-em bo-chan-ga-artemis bo-chan-ga ga vo-goi chan-va-vo-chan ruot goi phu-kien; do
+            rm -f "data/products-${CAT}.full.json" "data/products-${CAT}.full.jsonl" "data/state-${CAT}.json" "data/run-stats-${CAT}.json" "data/discovery-${CAT}.json"
+          done
+          rm -f data/sync-diff.json
           echo "Đã dọn file trung gian. File data/ còn lại:"
           ls -la data/
 
@@ -168,5 +197,5 @@ jobs:
         with:
           title: "Cập nhật catalog từ everon.com"
           branch: "sync/catalog"
-          commit-message: "sync: cập nhật catalog Bộ chăn ga từ everon.com"
+          commit-message: "sync: cập nhật catalog từ everon.com"
           body-path: /tmp/PR_BODY.md
