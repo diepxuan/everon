@@ -77,3 +77,19 @@ Chỉ dùng trong lần chạy, KHÔNG commit (workflow xóa trước bước t�
 
 - Sitemap của everon.com CÓ `<lastmod>` cho mọi URL (đã kiểm chứng trực tiếp ngày 23/11/2026: 1543/1543 URL có lastmod), nhưng regex cũ trong `discover()` chỉ bắt `<lastmod>` khi nó đứng ngay sau `</loc>`, trong khi thứ tự thật là `<loc> → <priority> → <lastmod>`. Hậu quả: `lastmod_by_url` lưu toàn `null`, và code cũ cũng không hề so sánh lastmod — chế độ `--resume` chỉ nạp lại `state.json` rồi bỏ qua mọi URL đã có, nên lần chạy ngày thường thực chất viết lại dữ liệu cũ (giá mới không bao giờ được cập nhật; giá giảm 15% trong PR #8 chỉ xuất hiện vì lần đó chạy full do chưa có `discovery.json` trên main). Đã sửa regex (đọc theo từng khối `<url>`) và triển khai so sánh thật: URL mới, URL thiếu tín hiệu lastmod ở một trong hai bên, hoặc URL đổi lastmod thì cào lại; còn lại giữ nguyên từ `products.json`.
 - Lần chạy đầu tiên sau PR dọn dẹp này sẽ cào lại toàn bộ 189 sản phẩm (vì lastmod đang lưu trên main đều `null`); từ lần sau trở đi mới tăng dần thật sự. Chủ nhật vẫn quét toàn bộ (`--full`) để bắt mọi thay đổi mà lastmod bỏ sót (vd: everon.com đổi giá mà không cập nhật lastmod).
+
+## Ảnh dùng chung giữa 2 sản phẩm (sửa 27/11/2026)
+
+Một `source_url` có thể xuất hiện ở 2 sản phẩm (vd bộ EPM25028 và Vỏ
+gối tựa EPM25028-TUA dùng chung ảnh; 2 listing Đệm `...-NV` và không
+`-NV`; KMP407 và bản copy `18717`). Scraper sinh `media.src` từ SKU
+của từng sản phẩm nên cùng 1 ảnh có 2 `src` khác nhau, trong khi
+manifest chỉ lưu được 1 `local_path` cho mỗi `source_url` — validate
+báo mismatch (làm gãy sync run #9 ngày 26/11/2026: 18 lỗi).
+
+Quy tắc đã chốt: **mỗi `source_url` chỉ có 1 `src` chuẩn** — `src` của
+sản phẩm đầu tiên gặp trong thứ tự gộp của `export-site-data.mjs`
+(`export-site-data.mjs` chuẩn hóa sau bước gộp UNION; `validate.mjs`
+chấp nhận thư mục chuẩn thay vì bắt buộc trùng `id` sản phẩm). Ảnh
+chỉ tải 1 lần, manifest chỉ có 1 entry, validate hết lỗi. `images.mjs`
+không đổi: nó chỉ tải về đúng `src` đã chuẩn hóa.

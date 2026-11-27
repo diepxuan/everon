@@ -39,10 +39,16 @@ const warnings = [];
 const seenSku = new Set();
 
 // Anh tu luu: media.src la duong dan anh WebP trong repo
-// (vd: assets/img/products/cpm27202/cover.webp). Thu muc phai trung
+// (vd: assets/img/products/cpm27202/cover.webp). Thu muc THUONG trung
 // voi id san pham (sku viet thuong), ten file cover.webp hoac
 // img-<so>.webp; neu chuyen WebP that bai, images.mjs giu dinh dang
 // goc (.jpg/.png) va cap nhat lai src — ca hai deu hop le.
+// NGOAI LE (sua 27/11/2026): anh dung chung giua 2 san pham
+// (1 source_url, 2 src) duoc chuan hoa ve 1 duong dan o
+// export-site-data.mjs — thu muc khi do la thu muc cua san pham
+// dau tien dung anh do, khong nhat thiet trung id san pham nay.
+// Vi vay kiem tra thu muc duoi day chap nhan ca thu muc chuan
+// (first-seen theo thu tu products.json) lan id cua chinh san pham.
 const SRC_RE = /^assets\/img\/products\/[a-z0-9-]+\/(cover|img-\d+)\.(webp|jpg|jpeg|png)$/;
 
 if (!Array.isArray(raw) && raw.schema_version !== 1) errors.push('schema_version phai la 1');
@@ -50,6 +56,19 @@ if (!Array.isArray(products) || products.length === 0) errors.push('khong co san
 if (!Array.isArray(raw) && raw.category?.id && !KNOWN_CATEGORIES.has(raw.category.id)) errors.push(`category.id khong biet: ${raw.category.id}`);
 if (!Array.isArray(raw) && raw.count !== undefined && raw.count !== products.length) {
   errors.push(`count khai bao ${raw.count} khac so san pham thuc ${products.length}`);
+}
+
+// Thu muc anh chuan cho moi source_url (first-seen theo thu tu
+// products.json) — phai khop voi chuan hoa media.src o
+// export-site-data.mjs (sua 27/11/2026). Dung cho kiem tra thu muc
+// ben duoi: anh dung chung co thu muc = thu muc chuan, khong phai
+// id cua san pham dang xet.
+const canonicalDirByUrl = new Map();
+for (const p of products) {
+  for (const m of (p.media ?? [])) {
+    if (!m.source_url || !m.src) continue;
+    if (!canonicalDirByUrl.has(m.source_url)) canonicalDirByUrl.set(m.source_url, m.src.split('/')[3]);
+  }
 }
 
 for (const p of products) {
@@ -82,7 +101,8 @@ for (const p of products) {
     else {
       if (!SRC_RE.test(m.src)) errors.push(`${tag}: anh src sai dinh dang: ${m.src}`);
       const dir = m.src.split('/')[3];
-      if (dir && p.id && dir !== p.id) errors.push(`${tag}: anh src thu muc ${dir} khac id san pham ${p.id}`);
+      const canonDir = canonicalDirByUrl.get(m.source_url);
+      if (dir && p.id && dir !== p.id && dir !== canonDir) errors.push(`${tag}: anh src thu muc ${dir} khac id san pham ${p.id}`);
     }
   }
   if (!p.source?.url?.startsWith('https://everon.com/san-pham/')) errors.push(`${tag}: source.url khong phai trang san pham everon.com`);
