@@ -193,7 +193,7 @@
       : "";
     var material = p.attributes && p.attributes.material
       ? "<li><b>Chất liệu:</b> " + esc(p.attributes.material) + "</li>"
-      : '<li><b>Chất liệu:</b> <span class="missing">chưa có trên nguồn</span></li>';
+      : '<li><b>Chất liệu:</b> <span class="missing">N/A</span></li>';
     var colors = ((p.attributes && p.attributes.colors) || []).join(" / ");
     var setTypes = ((p.attributes && p.attributes.set_types) || []).slice(0, 2).join(" · ");
     return (
@@ -900,7 +900,7 @@
       var attrs = p.attributes || {};
       var specRows = [
         ["Mã sản phẩm", esc(p.sku)],
-        ["Chất liệu", attrs.material ? esc(attrs.material) : '<span class="missing">chưa có trên nguồn</span>'],
+        ["Chất liệu", attrs.material ? esc(attrs.material) : '<span class="missing">N/A</span>'],
         ["Màu sắc", (attrs.colors || []).length ? esc(attrs.colors.join(" / ")) : '<span class="missing">chưa có trên nguồn</span>'],
         ["Họa tiết", attrs.pattern_type ? esc(attrs.pattern_type + (attrs.pattern ? " — " + attrs.pattern : "")) : '<span class="missing">chưa có trên nguồn</span>'],
         ["Xuất xứ", attrs.origin ? esc("Việt Nam") : '<span class="missing">chưa có trên nguồn</span>'],
