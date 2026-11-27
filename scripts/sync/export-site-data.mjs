@@ -106,6 +106,32 @@ for (const p of merged) {
 const products = [...seen.values()];
 console.log(`[export] Trung SKU gop UNION: ${unionStats.collisions} SKU trung, +${unionStats.variantsAdded} bien the tu ban thua, +${unionStats.catsAdded} category_ids`);
 
+// Chuan hoa media.src cho anh dung chung (sua 27/11/2026 — gay sync run #9):
+// Mot source_url co the xuat hien o 2 san pham (vd bo EPM25028 va
+// Vo goi tua EPM25028-TUA dung chung anh; 2 listing Dem ...-NV va
+// khong -NV; KMP407 va ban copy 18717). scrape-full.mjs sinh media.src
+// tu SKU cua tung san pham (scrape-full.mjs:1513-1516) nen cung 1 anh
+// co 2 src khac nhau, trong khi manifest (images.mjs) chi luu duoc 1
+// local_path cho moi source_url — validate sau do bao mismatch
+// (run #9: 18 loi). Quy tac: moi source_url chi co 1 src chuan —
+// src cua san pham dau tien gap trong thu tu gop (thu tu danh muc
+// FULL_FILES, roi thu tu discovery trong danh muc). Moi san pham dung
+// chung anh do deu tro ve cung 1 duong dan; anh chi tai 1 lan,
+// manifest chi co 1 entry, validate het loi. Neu thu tu gop doi o lan
+// chay sau, src chuan co the doi theo — anh se tai lai 1 lan ve thu
+// muc moi, file cu thua lai tren dia (khong anh huong validate).
+const canonicalSrc = new Map(); // source_url -> src chuan (first-seen)
+let rewrittenSrc = 0;
+for (const p of products) {
+  for (const m of (p.media ?? [])) {
+    if (!m.source_url || !m.src) continue;
+    let canon = canonicalSrc.get(m.source_url);
+    if (!canon) { canon = m.src; canonicalSrc.set(m.source_url, canon); }
+    if (m.src !== canon) { m.src = canon; rewrittenSrc++; }
+  }
+}
+if (rewrittenSrc > 0) console.log(`[export] Chuan hoa media.src anh dung chung: ${rewrittenSrc} media doi ve src chuan (moi source_url 1 duong dan)`);
+
 writeFileSync(outPath, JSON.stringify(products, null, 2) + '\n', 'utf8');
 console.log(`[export] Da ghi ${products.length} san pham -> ${OUT_FILE} (moi: ${merged.length - kept.length}, giu lai tu lan truoc: ${kept.length}, trung SKU gop: ${merged.length - products.length} ban trung)`);
 
