@@ -3,6 +3,10 @@
 //   node scripts/sync/export-site-data.mjs
 //     [--full data/products-bo-chan-ga.full.json,data/products-dem.full.json]
 //     [--out data/products.json] [--state data/sync-state.json]
+//     [--remove-only]  (last chunk: chi ap dung data/queue-removed.json,
+//       khong can wrapper nao)
+// Wrapper co partial: true (che do hang doi 28/11/2026 — chi chua 1 batch)
+// duoc GOP theo SKU vao danh muc cu thay vi thay the ca danh muc.
 //
 // scrape-full.mjs ghi ban wrapper {schema_version, count, products:[...]}
 // RIENG TUNG DANH MUC (data/products-<id>.full.json).
@@ -37,12 +41,32 @@ const FULL_FILES = argVal('--full', 'data/products-dem.full.json,data/products-d
   .split(',').map((s) => s.trim()).filter(Boolean);
 const OUT_FILE = argVal('--out', 'data/products.json');
 const STATE_FILE = argVal('--state', 'data/sync-state.json');
+const REMOVE_ONLY = args.includes('--remove-only'); // last chunk: chi ap dung danh sach xoa, khong can wrapper nao
 
 // Đọc products.json CŨ trước để giữ lại danh mục không được cào lần này.
 let prevProducts = [];
 const outPath = resolve(ROOT, OUT_FILE);
 if (existsSync(outPath)) {
   try { prevProducts = JSON.parse(readFileSync(outPath, 'utf8')) ?? []; } catch { prevProducts = []; }
+}
+
+// Last chunk: loai san pham da bien mat khoi nguon (data/queue-removed.json
+// do queue.mjs merge-discovery ghi). Chi ap dung khi file ton tai —
+// workflow xoa file nay sau moi lan chay nen khong bi xoa lap.
+let removedSkus = new Set();
+let removedUrls = new Set();
+try {
+  const rem = JSON.parse(readFileSync(resolve(ROOT, 'data/queue-removed.json'), 'utf8'));
+  const list = Array.isArray(rem) ? rem : (rem.removed ?? []);
+  for (const e of list) {
+    if (typeof e === 'string') removedSkus.add(e);
+    else { if (e.sku) removedSkus.add(e.sku); if (e.url) removedUrls.add(e.url); }
+  }
+} catch { /* khong co file xoa */ }
+if (removedSkus.size || removedUrls.size) {
+  const before = prevProducts.length;
+  prevProducts = prevProducts.filter((p) => !removedSkus.has(p.sku) && !removedUrls.has(p.source?.url));
+  console.log(`[export] Da loai ${before - prevProducts.length} SP theo data/queue-removed.json (con ${prevProducts.length})`);
 }
 
 const freshByCategory = new Map(); // category id -> { products, wrapper }
@@ -52,16 +76,39 @@ for (const f of FULL_FILES) {
   const full = JSON.parse(readFileSync(p, 'utf8'));
   const products = Array.isArray(full) ? full : full.products ?? [];
   const catId = full.category?.id ?? null;
-  if (!products.length) { console.error('[export] Khong co san pham nao trong', f); process.exit(1); }
+  if (!products.length) {
+    if (full.partial === true) { console.log(`[export] Bo qua ${f} (wrapper partial rong — batch khong cao duoc san pham nao, danh muc giu nguyen)`); continue; }
+    console.error('[export] Khong co san pham nao trong', f); process.exit(1);
+  }
   if (!catId) { console.error('[export] Wrapper', f, 'thieu category.id'); process.exit(1); }
   freshByCategory.set(catId, { products, wrapper: full });
   console.log(`[export] ${f}: ${products.length} SP danh muc ${catId}`);
 }
-if (!freshByCategory.size) { console.error('[export] Khong co file wrapper nao — khong ghi de products.json'); process.exit(1); }
+if (!freshByCategory.size && !REMOVE_ONLY) { console.error('[export] Khong co file wrapper nao — khong ghi de products.json'); process.exit(1); }
 
 const freshCatIds = new Set(freshByCategory.keys());
-// Giữ lại sản phẩm cũ thuộc danh mục KHÔNG được cào lần này.
-const kept = prevProducts.filter((p) => !(p.category_ids ?? []).some((c) => freshCatIds.has(c)));
+// Danh muc partial (wrapper chi chua 1 batch — che do hang doi 28/11/2026):
+// GOP theo SKU thay vi thay the ca danh muc (xem ghi chu o kept ben duoi).
+const partialCatIds = new Set([...freshByCategory.entries()].filter(([, v]) => v.wrapper?.partial === true).map(([k]) => k));
+const freshSkus = new Set();
+const freshUrls = new Set();
+for (const [catId, { products: ps }] of freshByCategory) {
+  if (!partialCatIds.has(catId)) continue;
+  for (const p of ps) { freshSkus.add(p.sku); if (p.source?.url) freshUrls.add(p.source.url); }
+}
+// Giữ lại sản phẩm cũ thuộc danh mục KHÔNG được cào lần này; với danh mục
+// partial thì chỉ giữ sản phẩm cũ nào KHÔNG có trong batch mới (theo SKU) —
+// san pham con lai cua danh muc do (chua toi luot cao) khong bi xoa.
+// Ngoai le: SP cu co cung URL voi SP trong batch nhung khac SKU (SKU doi
+// giua 2 lan cao — vd FRYARN thanh EBTT2022FRYARN) thi LOAI BO de ban moi
+// thay the, khong de 2 ban trung nhau nam canh nhau.
+const kept = prevProducts.filter((p) => {
+  if (freshUrls.has(p.source?.url) && !freshSkus.has(p.sku)) return false;
+  const cats = p.category_ids ?? [];
+  const freshCats = cats.filter((c) => freshCatIds.has(c));
+  if (!freshCats.length) return true;
+  return freshCats.every((c) => partialCatIds.has(c)) && !freshSkus.has(p.sku);
+});
 const merged = [];
 for (const { products } of freshByCategory.values()) merged.push(...products);
 merged.push(...kept);
