@@ -11,6 +11,11 @@
 //   node scripts/sync/scrape-full.mjs --resume         (tiếp tục từ checkpoint
 //     data/state-<id>.json — chỉ dùng khi chạy tay trên máy, workflow không dùng)
 //   node scripts/sync/scrape-full.mjs --limit 5 --out data/test.json
+//   node scripts/sync/scrape-full.mjs --category bo-chan-ga --urls-file data/queue-urls-bo-chan-ga.txt --queue data/crawl-queue.json
+//     (che do hang doi 28/11/2026: cao dung cac URL trong file, ghi dau last_crawl;
+//      wrapper co partial: true de export gop theo SKU)
+//   node scripts/sync/scrape-full.mjs --discover-all   (discovery ca 12 danh muc
+//     -> data/queue-discovery.json, phuc vu last chunk)
 //
 // DANH MỤC (sửa 24/11/2026 — thêm Đệm): mỗi danh mục cào riêng ra file
 // data/products-<id>.full.json; export-site-data.mjs GỘP các file danh mục
@@ -297,7 +302,21 @@ const CATEGORY_URL = CAT.urls[0]; // trang danh mục chính (dùng khi chỉ c�
 const LIMIT = Number(argVal('--limit') ?? NaN);
 const RESUME = args.includes('--resume');
 const SKIP_DISCOVERY = args.includes('--skip-discovery');
-const FULL = args.includes('--full'); // quet toan bo: bo qua lastmod, cao lai tat ca URL
+// Che do hang doi (them 28/11/2026 — sync chia chunk theo file hang doi):
+//   --urls-file <path> : cao DUNG cac URL trong file (1 URL/dong), bo qua
+//     discovery/lastmod. Dung kem --category (danh muc chinh cua batch) va
+//     --queue (file hang doi de ghi dau last_crawl).
+//   --queue <path>     : file hang doi data/crawl-queue.json — ghi dau
+//     last_crawl (va status 'gone' neu URL tra 404) sau moi URL cao xong.
+//   --discover-all     : chi chay discovery cho ca 12 danh muc roi thoat
+//     (ghi data/queue-discovery.json, phuc vu last chunk).
+//   --discover-only    : chi chay discovery cho 1 danh muc roi thoat
+//     (duoc --discover-all goi qua tien trinh con).
+const URLS_FILE = argVal('--urls-file') ?? null;
+const QUEUE_FILE = argVal('--queue') ?? null;
+const DISCOVER_ALL = args.includes('--discover-all');
+const QUEUE_MODE = URLS_FILE !== null;
+const FULL = args.includes('--full') || QUEUE_MODE; // quet toan bo: bo qua lastmod, cao lai tat ca URL
 // File ra theo danh mục (để export-site-data.mjs gộp nhiều danh mục;
 // file trung gian này KHÔNG commit — workflow dọn sau mỗi lần chạy).
 const OUT = argVal('--out') ?? `data/products-${CATEGORY_ID}.full.json`;
@@ -308,6 +327,63 @@ const RUN_STATS_FILE = `data/run-stats-${CATEGORY_ID}.json`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let consecutiveErrors = 0;
+
+// ---------- Ho tro che do hang doi (28/11/2026) ----------
+function loadQueue() {
+  try { return JSON.parse(readFileSync(resolve(ROOT, QUEUE_FILE), 'utf8')); } catch { return []; }
+}
+function saveQueue(q) {
+  mkdirSync(resolve(ROOT, 'data'), { recursive: true });
+  writeFileSync(resolve(ROOT, QUEUE_FILE), JSON.stringify(q, null, 2) + '\n', 'utf8');
+}
+// Ghi dau "da cao" cho 1 URL trong file hang doi (goi sau moi san pham cao xong).
+function markQueueCrawled(url) {
+  if (!QUEUE_FILE) return;
+  const q = loadQueue();
+  const e = q.find((x) => x.url === url);
+  if (e) { e.last_crawl = new Date().toISOString(); delete e.status; saveQueue(q); }
+}
+// Danh dau URL da bien mat khoi nguon (HTTP 404): last chunk se xoa khoi file.
+function markQueueGone(url) {
+  if (!QUEUE_FILE) return;
+  const q = loadQueue();
+  const e = q.find((x) => x.url === url);
+  if (e) { e.last_crawl = new Date().toISOString(); e.status = 'gone'; saveQueue(q); }
+}
+// Muc hang doi cua 1 URL (de lay danh sach danh muc + sub_type cua san pham).
+function queueEntryFor(url) {
+  if (!QUEUE_FILE) return null;
+  return loadQueue().find((x) => x.url === url) ?? null;
+}
+// Discovery cho ca 12 danh muc (phuc vu last chunk): chay discover() nguyen ven
+// cho tung danh muc qua tien trinh con (de khong phai sua discover()), roi gop
+// thanh data/queue-discovery.json: { urls: [{url, categories, sub_type, lastmod}],
+// sitemap_product_urls: [...] }. 1 URL co the xuat hien o nhieu luoi danh muc —
+// giu TAT CA danh muc (de san pham giu du category_ids nhu truoc day).
+async function discoverAll() {
+  const { execFileSync } = await import('node:child_process');
+  const self = fileURLToPath(import.meta.url);
+  const byUrl = new Map();
+  for (const id of Object.keys(CATEGORIES)) {
+    console.log(`[discover-all] ${id} ...`);
+    execFileSync(process.execPath, [self, '--category', id, '--discover-only'], { stdio: 'inherit' });
+    const d = JSON.parse(readFileSync(`${ROOT}/data/discovery-${id}.json`, 'utf8'));
+    const lm = d.lastmod_by_url ?? {};
+    for (const u of d.urls) {
+      const cur = byUrl.get(u);
+      if (!cur) byUrl.set(u, { url: u, categories: [id], sub_type: d.sub_type_by_url?.[u] ?? null, lastmod: lm[u] ?? null });
+      else if (!cur.categories.includes(id)) cur.categories.push(id);
+    }
+  }
+  // Sitemap (1 lan): danh sach SP that tren nguon, de last chunk biet SP nao
+  // da bien mat (khong con trong sitemap lan nao nua).
+  const sm = await fetchText(SITEMAP_URL, { accept: 'application/xml, text/html' });
+  const sitemapProductUrls = [...sm.matchAll(/<loc>(https:\/\/everon\.com\/san-pham\/[^<]+)<\/loc>/g)].map((m) => m[1]);
+  console.log(`[discover-all] sitemap: ${sitemapProductUrls.length} URL san-pham`);
+  mkdirSync(`${ROOT}/data`, { recursive: true });
+  writeFileSync(`${ROOT}/data/queue-discovery.json`, JSON.stringify({ crawled_at: new Date().toISOString(), count: byUrl.size, urls: [...byUrl.values()], sitemap_product_urls: sitemapProductUrls }, null, 2) + '\n');
+  console.log(`[discover-all] Xong: ${byUrl.size} URL duy nhat tu ${Object.keys(CATEGORIES).length} danh muc -> data/queue-discovery.json`);
+}
 
 async function fetchText(url, { accept = 'text/html', csrf = null } = {}, tries = 2) {
   for (let i = 1; i <= tries; i++) {
@@ -1331,8 +1407,22 @@ async function buildVariantsMattress(base, defVar, productSku) {
 // ---------- Main ----------
 async function main() {
   mkdirSync(`${ROOT}/data`, { recursive: true });
+  if (DISCOVER_ALL) { await discoverAll(); return; }
+  if (args.includes('--discover-only')) { await discover(); console.log('[discovery-only] Da ghi file discovery, thoat.'); return; }
   let discovery;
-  if (SKIP_DISCOVERY && existsSync(`${ROOT}/${DISCOVERY_FILE}`)) {
+  let queueEntriesByUrl = null; // che do hang doi: map URL -> muc hang doi (danh muc, sub_type)
+  if (QUEUE_MODE) {
+    // Che do hang doi: cao dung cac URL trong file, bo qua discovery/lastmod.
+    // sub_type cua tung URL lay tu file hang doi (de matressType/sub_type
+    // dung nhu khi cao theo danh muc).
+    const rawUrls = readFileSync(resolve(ROOT, URLS_FILE), 'utf8').split('\n').map((s) => s.trim()).filter(Boolean);
+    queueEntriesByUrl = new Map(loadQueue().map((e) => [e.url, e]));
+    const subTypeByUrl = {};
+    for (const u of rawUrls) { const st = queueEntriesByUrl.get(u)?.sub_type; if (st) subTypeByUrl[u] = st; }
+    const catCount = [...queueEntriesByUrl.values()].filter((e) => (e.categories ?? []).includes(CAT.id)).length || rawUrls.length;
+    discovery = { urls: rawUrls, lastmod_by_url: {}, sub_type_by_url: subTypeByUrl, category_count_on_source: catCount };
+    console.log(`[hang-doi] ${rawUrls.length} URL tu ${URLS_FILE} (danh muc ${CAT.id})`);
+  } else if (SKIP_DISCOVERY && existsSync(`${ROOT}/${DISCOVERY_FILE}`)) {
     discovery = JSON.parse(readFileSync(`${ROOT}/${DISCOVERY_FILE}`, 'utf8'));
     console.log(`[discovery] Dung lai ${DISCOVERY_FILE}: ${discovery.urls.length} URL danh muc`);
   } else {
@@ -1460,7 +1550,7 @@ async function main() {
           ?? (d?.sku && /^[A-Z0-9]{3,}$/.test(String(d.sku).trim()) ? String(d.sku).trim().toUpperCase() : null);
       const name = (d?.name && d.name !== sku ? d.name : null) ?? (base.nameFromTitle || sku);
       if (!sku) { skipped.push({ url, reason: 'khong xac dinh duoc SKU' }); console.log(`[skip] ${url}: khong xac dinh duoc SKU`); continue; }
-      if (done.has(sku)) { console.log(`[trung-sku] ${sku}`); continue; }
+      if (done.has(sku)) { console.log(`[trung-sku] ${sku}`); markQueueCrawled(url); continue; }
       const buildRes = CAT.mode === 'mattress'
         ? await buildVariantsMattress(base, defVar, sku)
         : await buildVariants(base, defVar, sku);
@@ -1527,7 +1617,11 @@ async function main() {
       const outOfStock = anyInStock ? false : (allKnownZero || base.outOfStock);
       const product = {
         id: pid, sku, slug: base.slug || slugify(name, sku), name,
-        category_ids: [CAT.id], collection_ids: base.collections,
+        // Che do hang doi: san pham giu DU danh muc no xuat hien tren nguon
+        // (lay tu file hang doi) nhu truoc day khi cao o nhieu danh muc;
+        // che do danh muc thi chi co 1 danh muc nhu cu.
+        category_ids: QUEUE_MODE ? (queueEntriesByUrl?.get(url)?.categories ?? [CAT.id]) : [CAT.id],
+        collection_ids: base.collections,
         description: (d?.short_description || null) ?? base.desc,
         attributes: {
           material: base.material, colors: base.colors,
@@ -1565,12 +1659,16 @@ async function main() {
       done.set(sku, product);
       jsonlLines.push(JSON.stringify(product));
       saveCheckpoint([...done.values()]);
+      markQueueCrawled(url);
       consecutiveErrors = 0;
       console.log(`[ok] ${sku} — ${name} — ${(price ?? 0).toLocaleString('vi-VN')}đ — ${variants.length} bien the (${coverage.status}) — ${done.size}/${urls.length}`);
     } catch (e) {
       consecutiveErrors += 1;
       skipped.push({ url, reason: String(e.message) });
       console.log(`[loi] ${url}: ${e.message} (loi lien tiep: ${consecutiveErrors})`);
+      // URL tra 404 = san pham da bien mat khoi nguon: danh dau 'gone' de
+      // last chunk xoa khoi file hang doi (khong de ket vong lap mai).
+      if (QUEUE_MODE && /HTTP 404/.test(String(e.message))) { markQueueGone(url); console.log(`[gone] ${url}: danh dau da bien mat khoi nguon`); }
       if (consecutiveErrors >= 10) { console.log('[dung] Qua nhieu loi lien tiep — dung chay, giu lai phan da xong.'); break; }
     }
   }
@@ -1584,6 +1682,9 @@ async function main() {
   products.sort((a, b) => (orderIdx.get(a.source?.url) ?? 1e9) - (orderIdx.get(b.source?.url) ?? 1e9));
   const out = {
     schema_version: 1,
+    // partial: true khi cao theo hang doi — wrapper chi chua batch vua cao,
+    // export-site-data.mjs se GOP theo SKU thay vi thay the ca danh muc.
+    partial: QUEUE_MODE,
     category: { id: CAT.id, name: CAT.name, product_count_on_source: discovery.category_count_on_source, source_url: CAT.source_url },
     source: { site: 'everon.com', category_url: CAT.source_url, category_urls: CAT.urls, sitemap_url: SITEMAP_URL, crawled_at: new Date().toISOString() },
     synced_at: new Date().toISOString(),
