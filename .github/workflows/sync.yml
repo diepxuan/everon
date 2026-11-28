@@ -1,48 +1,33 @@
 # .github/workflows/sync.yml — Đồng bộ catalog + ảnh tự lưu cho everon.site
-# Theo phương án everon.site mục 5 + chiến lược ảnh. CẬP NHẬT 26/11/2026:
-# site giờ có TOÀN BỘ catalog (12 danh mục, 437 SP) thay vì chỉ Bộ chăn ga.
-#
-# Luồng chạy (thứ tự quan trọng):
-#   1. scrape-full.mjs — cập nhật dữ liệu từ everon.com (sitemap + variation),
-#      chạy RIÊNG TỪNG DANH MỤC (--category <id>), 12 danh mục:
-#        dem, dem-k-bedding, k-bedding, tre-em, bo-chan-ga-artemis,
-#        bo-chan-ga, ga, vo-goi, chan-va-vo-chan, ruot, goi, phu-kien.
-#      Tăng dần THẬT SỰ theo sitemap lastmod (so với lastmod đã lưu trong
-#      data/sync-state.json): chỉ cào lại URL mới/đổi, giữ lại phần còn lại
-#      từ data/products.json.
-#   2. export-site-data.mjs — gộp 12 wrapper thành data/products.json
-#      (UNION biến thể theo (set_type, size) khi cùng SKU xuất hiện ở
-#      nhiều danh mục; danh mục nào không cào lần này thì giữ nguyên từ
-#      products.json cũ) + cập nhật sync-state.json.
-#   3. images.mjs — tải ảnh MỚI/THAY ĐỔI về assets/img/products/<sku>/*.webp.
-#   4. validate.mjs (+ safety gate) — chặn nếu mất >10% catalog hoặc giá = 0.
-#   5. diff.mjs — tóm tắt thay đổi để đưa vào mô tả PR.
-#   6. Dọn file trung gian — xóa data/products-<id>.full.json(.jsonl),
-#      data/state-<id>.json, data/run-stats-<id>.json,
-#      data/discovery-<id>.json, data/sync-diff.json TRƯỚC khi tạo PR,
-#      để PR sau chỉ gồm dữ liệu thật (products.json, sync-state.json,
-#      image-manifest.json) + ảnh.
-#   7. peter-evans/create-pull-request — mở PR để DUYỆT THỦ CÔNG, KHÔNG tự merge.
-#      Action chỉ mở PR khi có thay đổi thật (không có thay đổi thì không làm gì).
-#
-# Lịch: hằng ngày 03:00 giờ Việt Nam (20:00 UTC).
-#   - Mỗi ngày: tăng dần cho cả 12 danh mục + QUÉT TOÀN BỘ 2 danh mục
-#     XOAY VÒNG theo ngày trong năm (6 cặp, mỗi danh mục được quét toàn bộ
-#     1 lần / 6 ngày). Quét toàn bộ cả 12 danh mục trong 1 lần chạy sẽ mất
-#     ~6–7 giờ, VƯỢT timeout tối đa của GitHub Actions (360 phút) nên
-#     KHÔNG quét toàn bộ hằng ngày.
-#   - Chạy tay (workflow_dispatch, tick full_scan): quét toàn bộ cả 12 danh
-#     mục. Timeout job 360 phút (tối đa cho phép); nếu vẫn quá giờ, chạy lại
-#     với full_scan lần nữa — scraper có checkpoint (--resume) và export giữ
-#     nguyên danh mục chưa cào xong, nên lần chạy sau tiếp tục từ chỗ dở.
-#   - Chạy tay với input `categories` (vd "vo-goi,chan-va-vo-chan"): chỉ
-#     sync các danh mục đó (tăng dần, trừ khi tick full_scan).
-# Chạy tay: Actions > Sync catalog > Run workflow, tick full_scan nếu muốn quét toàn bộ.
+# CẬP NHẬT 28/11/2026 — chế độ hàng đợi (chunk), thay cho lịch hằng ngày cũ:
+#   - File hàng đợi data/crawl-queue.json: 1 dòng/SP {url, sku, categories,
+#     sub_type, last_crawl}. Mỗi job lấy 1 batch (~60 SP chưa cào) rồi cào
+#     đầy đủ từng SP (tuần tự, kèm đủ biến thể, ngân sách 40 lần gọi biến
+#     thể giữ nguyên), ghi dấu last_crawl. Tốc độ đo được ~95 giây/SP
+#     (log run #12) nên 1 batch ~95 phút, vừa trong ~2 tiếng.
+#   - Cron MỖI GIỜ; job nào đang chạy thì job mới TỰ BỎ QUA (guard), không
+#     xếp hàng, không chạy chồng. Timeout job giữ 360 phút như cũ (để chạy
+#     tay full_scan khẩn cấp không bị cắt); chunk ~2 tiếng đạt được nhờ
+#     cỡ batch (60), không nhờ timeout.
+#   - Hết file (không còn SP chưa cào) thì chạy LAST CHUNK: discovery lại
+#     toàn bộ nguồn, bổ sung SP mới vào file, ghi SP đã biến mất vào
+#     data/queue-removed.json (export áp dụng khi mở PR, qua safety gate),
+#     rồi XÓA SẠCH last_crawl để bắt đầu vòng mới. Không còn quét toàn bộ
+#     riêng vào Chủ nhật nữa.
+#   - File hàng đợi được commit TRỰC TIẾP lên main sau mỗi job (chỉ file
+#     này — dữ liệu sản phẩm vẫn qua PR duyệt thủ công). Nếu không commit
+#     thẳng thì chunk sau không thấy dấu đã cào và sẽ cào lặp.
+#   - Mỗi job mở PR riêng (branch sync/catalog-<run_id>) nếu có thay đổi.
+# Chạy tay: Actions > Sync catalog > Run workflow.
+#   - tick full_scan: quét toàn bộ cả 12 danh mục (chế độ cũ, khẩn cấp).
+#   - nhập categories (vd "vo-goi,chan-va-vo-chan"): chỉ sync các danh mục
+#     đó (tăng dần, chế độ cũ).
+#   - tick force_last_chunk: chạy last chunk ngay (không đợi hết file).
 name: Sync catalog from everon.com
 
 on:
   schedule:
-    - cron: "0 20 * * *" # 03:00 giờ Việt Nam, hằng ngày
+    - cron: "0 * * * *" # mỗi giờ
   workflow_dispatch:
     inputs:
       full_scan:
@@ -50,9 +35,17 @@ on:
         type: boolean
         default: false
       categories:
-        description: "Chỉ sync các danh mục này (vd: vo-goi,chan-va-vo-chan). Để trống = cả 12 danh mục."
+        description: "Chỉ sync các danh mục này (vd: vo-goi,chan-va-vo-chan). Để trống = theo hàng đợi."
         type: string
         default: ""
+      batch_size:
+        description: "Số sản phẩm mỗi chunk (mặc định 60, ~95 giây/SP)"
+        type: string
+        default: "60"
+      force_last_chunk:
+        description: "Chạy last chunk ngay (discovery + reset hàng đợi)"
+        type: boolean
+        default: false
 
 concurrency:
   group: catalog-sync
@@ -65,7 +58,7 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 # quét toàn bộ tay ~6-7h có thể quá giờ; chạy hằng ngày (xoay vòng) chỉ ~1-2h
+    timeout-minutes: 360 # chunk ~2 tiếng nhờ cỡ batch; giữ 360 để chạy tay full_scan khẩn cấp không bị cắt
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -89,35 +82,88 @@ jobs:
             echo "[]" > /tmp/products-prev.json
           fi
 
-      - name: Xác định danh mục + quét toàn bộ hay tăng dần
-        id: mode
+      - name: Bỏ qua nếu đang có job chạy (guard)
+        id: guard
         run: |
-          # 12 danh mục, thứ tự = thứ tự export (tre-em/artemis trước bo-chan-ga
-          # để SP chuyển danh mục thắng khi gộp; bo-chan-ga trước vo-goi/chan
-          # để trang bộ thắng khi UNION biến thể).
-          ALL_CATS="dem dem-k-bedding k-bedding tre-em bo-chan-ga-artemis bo-chan-ga ga vo-goi chan-va-vo-chan ruot goi phu-kien"
-          # 6 cặp xoay vòng (mỗi danh mục quét toàn bộ 1 lần / 6 ngày).
-          PAIRS="dem,dem-k-bedding k-bedding,tre-em bo-chan-ga-artemis,bo-chan-ga ga,vo-goi chan-va-vo-chan,ruot goi,phu-kien"
-          if [ "${{ inputs.full_scan }}" = "true" ]; then
-            CATS="$ALL_CATS"
-            FULL_CATS="$ALL_CATS"
-            echo "Quét TOÀN BỘ cả 12 danh mục (chạy tay yêu cầu full_scan)."
-          elif [ -n "${{ inputs.categories }}" ]; then
-            CATS=$(echo "${{ inputs.categories }}" | tr ',' ' ')
-            FULL_CATS=""
-            echo "Chỉ sync các danh mục: $CATS (tăng dần)."
+          RUNS=$(gh api "repos/${{ github.repository }}/actions/workflows/sync.yml/runs?status=in_progress&per_page=10" --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }})] | length')
+          if [ "$RUNS" != "0" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Đã có $RUNS job sync đang chạy — bỏ qua lần này, đợi tick cron sau."
           else
-            # Chạy lịch hằng ngày: tăng dần cả 12 + quét toàn bộ 2 danh mục xoay vòng.
-            DOY_VN=$(TZ=Asia/Ho_Chi_Minh date +%j)
-            IDX=$((10#$DOY_VN % 6))
-            CATS="$ALL_CATS"
-            FULL_CATS=$(echo "$PAIRS" | cut -d' ' -f$((IDX + 1)) | tr ',' ' ')
-            echo "Quét tăng dần cả 12 danh mục + quét toàn bộ xoay vòng: $FULL_CATS (ngày $DOY_VN, cặp $((IDX + 1))/6)."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Không có job sync nào đang chạy — tiếp tục."
           fi
-          echo "cats=$CATS" >> "$GITHUB_OUTPUT"
-          echo "full_cats=$FULL_CATS" >> "$GITHUB_OUTPUT"
 
-      - name: Sync catalog (12 danh mục)
+      - name: Xác định chế độ chạy (hàng đợi / chạy tay)
+        id: mode
+        if: steps.guard.outputs.skip != 'true'
+        run: |
+          if [ "${{ inputs.full_scan }}" = "true" ]; then
+            echo "mode=legacy" >> "$GITHUB_OUTPUT"
+            echo "cats=dem dem-k-bedding k-bedding tre-em bo-chan-ga-artemis bo-chan-ga ga vo-goi chan-va-vo-chan ruot goi phu-kien" >> "$GITHUB_OUTPUT"
+            echo "full_cats=dem dem-k-bedding k-bedding tre-em bo-chan-ga-artemis bo-chan-ga ga vo-goi chan-va-vo-chan ruot goi phu-kien" >> "$GITHUB_OUTPUT"
+            echo "Chạy tay: quét toàn bộ cả 12 danh mục (chế độ cũ)."
+          elif [ -n "${{ inputs.categories }}" ]; then
+            echo "mode=legacy" >> "$GITHUB_OUTPUT"
+            echo "cats=$(echo "${{ inputs.categories }}" | tr ',' ' ')" >> "$GITHUB_OUTPUT"
+            echo "full_cats=" >> "$GITHUB_OUTPUT"
+            echo "Chạy tay: chỉ sync các danh mục: ${{ inputs.categories }} (tăng dần, chế độ cũ)."
+          elif [ "${{ inputs.force_last_chunk }}" = "true" ]; then
+            echo "mode=queue-last" >> "$GITHUB_OUTPUT"
+            echo "Chạy tay: last chunk (discovery + reset hàng đợi)."
+          else
+            echo "mode=queue" >> "$GITHUB_OUTPUT"
+            echo "Chạy lịch: batch tiếp theo từ file hàng đợi."
+          fi
+
+      - name: Chọn batch từ file hàng đợi
+        id: batch
+        if: steps.guard.outputs.skip != 'true' && steps.mode.outputs.mode == 'queue'
+        run: |
+          node scripts/sync/queue.mjs select --batch-size "${{ inputs.batch_size || '60' }}" | tee /tmp/queue-select.log
+          if grep -q '^LAST_CHUNK=true' /tmp/queue-select.log; then
+            echo "last_chunk=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "last_chunk=false" >> "$GITHUB_OUTPUT"
+          fi
+          # Nhãn chunk + danh sách danh mục cho các bước sau (từ queue-batch.json).
+          node -e "
+            const fs = require('fs');
+            const b = JSON.parse(fs.readFileSync('data/queue-batch.json', 'utf8'));
+            const label = b.categories.map((c) => c.id + ' x' + c.urls.length).join(' + ') || 'last chunk';
+            const cats = b.categories.map((c) => c.id).join(' ');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'chunk_label=' + label + '\n');
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'batch_cats=' + cats + '\n');
+            console.log('Chunk: ' + label);
+          "
+
+      - name: Sync batch (hàng đợi)
+        if: steps.guard.outputs.skip != 'true' && steps.mode.outputs.mode == 'queue' && steps.batch.outputs.last_chunk != 'true'
+        run: |
+          set -u
+          for CAT in ${{ steps.batch.outputs.batch_cats }}; do
+            echo "=== $CAT: batch tu hang doi ==="
+            node scripts/sync/scrape-full.mjs --category "$CAT" --urls-file "data/queue-urls-${CAT}.txt" --queue data/crawl-queue.json || node scripts/sync/scrape-full.mjs --category "$CAT" --urls-file "data/queue-urls-${CAT}.txt" --queue data/crawl-queue.json --resume
+          done
+
+      - name: Last chunk — discovery + reset hàng đợi
+        id: lastchunk
+        if: steps.guard.outputs.skip != 'true' && (steps.mode.outputs.mode == 'queue-last' || steps.batch.outputs.last_chunk == 'true')
+        run: |
+          node scripts/sync/scrape-full.mjs --discover-all
+          node scripts/sync/queue.mjs merge-discovery
+          REMOVED=$(node -e "console.log(JSON.parse(require('fs').readFileSync('data/queue-removed.json','utf8')).removed.length)")
+          echo "removed_count=$REMOVED" >> "$GITHUB_OUTPUT"
+          if [ "$REMOVED" = "0" ]; then
+            echo "skip_pipeline=true" >> "$GITHUB_OUTPUT"
+            echo "Last chunk: không có SP nào biến mất — chỉ reset hàng đợi, không mở PR."
+          else
+            echo "skip_pipeline=false" >> "$GITHUB_OUTPUT"
+            echo "Last chunk: $REMOVED SP đã biến mất — sẽ mở PR gỡ chúng (qua safety gate)."
+          fi
+
+      - name: Sync catalog (chế độ cũ — chạy tay)
+        if: steps.guard.outputs.skip != 'true' && steps.mode.outputs.mode == 'legacy'
         run: |
           set -u
           FULL_CATS=" ${{ steps.mode.outputs.full_cats }} "
@@ -132,18 +178,51 @@ jobs:
           done
 
       - name: Xuất dữ liệu site + cập nhật sync-state
-        run: node scripts/sync/export-site-data.mjs
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
+        run: |
+          if [ -n "${{ steps.lastchunk.outputs.removed_count }}" ] && [ "${{ steps.lastchunk.outputs.removed_count }}" != "0" ]; then
+            echo "Last chunk: chỉ áp dụng danh sách xóa."
+            node scripts/sync/export-site-data.mjs --remove-only
+          else
+            node scripts/sync/export-site-data.mjs
+          fi
 
       - name: Tải + chuyển ảnh sang WebP
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
         run: node scripts/sync/images.mjs
 
       - name: Validate + safety gate
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
         run: node scripts/sync/validate.mjs data/products.json --manifest data/image-manifest.json --prev /tmp/products-prev.json
 
+      - name: Commit file hàng đợi lên main (trực tiếp)
+        if: steps.guard.outputs.skip != 'true' && (steps.mode.outputs.mode == 'queue' || steps.mode.outputs.mode == 'queue-last')
+        run: |
+          # Chỉ file hàng đợi được commit thẳng (dữ liệu SP vẫn qua PR).
+          # Dùng GitHub API để không phụ thuộc git history (checkout nông).
+          # Chạy sau khi validate qua — nếu validate lỗi thì không commit,
+          # chunk sau sẽ cào lại batch này (không mất dữ liệu, chỉ tốn thời gian).
+          if [ ! -f data/crawl-queue.json ]; then echo "Không có file hàng đợi — bỏ qua."; exit 0; fi
+          LABEL="${{ steps.batch.outputs.chunk_label }}"
+          [ -n "$LABEL" ] || LABEL="last chunk"
+          CONTENT_B64=$(base64 -w0 data/crawl-queue.json)
+          SHA=$(gh api "repos/${{ github.repository }}/contents/data/crawl-queue.json?ref=main" --jq '.sha')
+          for i in 1 2 3; do
+            if gh api "repos/${{ github.repository }}/contents/data/crawl-queue.json" -X PUT -f message="sync: cập nhật hàng đợi crawl ($LABEL)" -f content="$CONTENT_B64" -f sha="$SHA" -f branch="main" --jq '.commit.sha'; then
+              echo "Đã commit file hàng đợi lên main."
+              break
+            fi
+            echo "PUT hàng đợi thất bại (lần $i) — lấy lại SHA rồi thử lại..."
+            sleep 5
+            SHA=$(gh api "repos/${{ github.repository }}/contents/data/crawl-queue.json?ref=main" --jq '.sha')
+          done
+
       - name: Diff vs trước đó
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
         run: node scripts/sync/diff.mjs /tmp/products-prev.json data/products.json > data/sync-diff.json
 
       - name: Soạn mô tả PR
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
         run: |
           node -e "
           const fs = require('fs');
@@ -152,8 +231,11 @@ jobs:
           const s = man.summary || {};
           const vnd = (n) => Number(n || 0).toLocaleString('vi-VN') + 'đ';
           const list = (arr, fmt, max = 20) => arr.slice(0, max).map(fmt).join('\n') + (arr.length > max ? '\n- ... và ' + (arr.length - max) + ' mục nữa' : '');
+          const batch = (() => { try { return JSON.parse(fs.readFileSync('data/queue-batch.json', 'utf8')); } catch { return null; } })();
+          const chunkLine = batch ? (batch.last_chunk ? 'Chunk: last chunk (discovery + reset hàng đợi)' : 'Chunk: ' + batch.categories.map((c) => c.id + ' x' + c.urls.length).join(' + ') + ' — còn ' + (batch.total_unmarked - batch.categories.reduce((a, c) => a + c.urls.length, 0)) + ' SP chưa cào trong vòng này') : 'Chạy tay (chế độ cũ).';
           const lines = [
             'Đồng bộ tự động từ everon.com (sitemap + product-variation). Duyệt thủ công trước khi merge — KHÔNG tự merge.',
+            chunkLine,
             '',
             '## Dữ liệu',
             '- Sản phẩm: ' + diff.old_count + ' → ' + diff.new_count,
@@ -179,23 +261,29 @@ jobs:
           "
 
       - name: Dọn file trung gian (chỉ commit dữ liệu + ảnh)
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
         run: |
           # File trung gian chỉ dùng trong lần chạy, KHÔNG commit nữa.
           # Mỗi danh mục có 5 file: products-<id>.full.json(.jsonl),
           # state-<id>.json, run-stats-<id>.json, discovery-<id>.json.
           # (export-site-data đã đọc xong wrapper ở bước trước; lần chạy sau
-          # tăng dần theo lastmod trong sync-state.json, không dùng state.json.)
+          # lấy batch từ file hàng đợi, không dùng state.json.)
           for CAT in dem dem-k-bedding k-bedding tre-em bo-chan-ga-artemis bo-chan-ga ga vo-goi chan-va-vo-chan ruot goi phu-kien; do
             rm -f "data/products-${CAT}.full.json" "data/products-${CAT}.full.jsonl" "data/state-${CAT}.json" "data/run-stats-${CAT}.json" "data/discovery-${CAT}.json"
           done
-          rm -f data/sync-diff.json
+          rm -f data/sync-diff.json data/queue-batch.json data/queue-urls-*.txt data/queue-discovery.json data/queue-removed.json
+          # sync-state.json không đưa vào PR chunk (mỗi job đều ghi lại
+          # last_run_at/totals -> 2 PR sẽ conflict nhau khi merge).
+          # Tiến độ vòng crawl giờ nằm ở data/crawl-queue.json (commit thẳng main).
+          git checkout -- data/sync-state.json 2>/dev/null || true
           echo "Đã dọn file trung gian. File data/ còn lại:"
           ls -la data/
 
       - name: Mở PR để duyệt thủ công
+        if: steps.guard.outputs.skip != 'true' && steps.lastchunk.outputs.skip_pipeline != 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           title: "Cập nhật catalog từ everon.com"
-          branch: "sync/catalog"
+          branch: "sync/catalog-${{ github.run_id }}"
           commit-message: "sync: cập nhật catalog từ everon.com"
           body-path: /tmp/PR_BODY.md
